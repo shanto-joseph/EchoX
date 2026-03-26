@@ -1,0 +1,1156 @@
+<Window x:Class="EchoX.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        Title="EchoX" Height="680" Width="1000"
+        Background="#0F0F11" WindowStartupLocation="CenterScreen"
+        FontFamily="Segoe UI" FontSize="13"
+        WindowStyle="None" AllowsTransparency="False"
+        ResizeMode="CanResize">
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="0" ResizeBorderThickness="5"
+                            CornerRadius="0" GlassFrameThickness="0"
+                            UseAeroCaptionButtons="False"/>
+    </shell:WindowChrome.WindowChrome>
+
+    <Window.Resources>
+        <!-- Colors -->
+        <SolidColorBrush x:Key="BgBase"      Color="#0F0F11"/>
+        <SolidColorBrush x:Key="BgSurface"   Color="#17171A"/>
+        <SolidColorBrush x:Key="BgCard"      Color="#1E1E22"/>
+        <SolidColorBrush x:Key="BgRaised"    Color="#26262B"/>
+        <SolidColorBrush x:Key="Border"      Color="#2E2E34"/>
+        <SolidColorBrush x:Key="Accent"      Color="#22C55E"/>
+        <SolidColorBrush x:Key="AccentLow"   Color="#16532A"/>
+        <SolidColorBrush x:Key="AccentGlow"  Color="#22C55E22"/>
+        <SolidColorBrush x:Key="AccentDim"   Color="#1B9A4A"/>
+        <SolidColorBrush x:Key="TextHi"      Color="#EDEDF0"/>
+        <SolidColorBrush x:Key="TextMid"     Color="#9898A0"/>
+        <SolidColorBrush x:Key="TextLow"     Color="#55555E"/>
+        <SolidColorBrush x:Key="Blue"        Color="#3B82F6"/>
+        <SolidColorBrush x:Key="BlueLow"     Color="#1E3A5F"/>
+        <SolidColorBrush x:Key="Red"         Color="#F87171"/>
+        <SolidColorBrush x:Key="Amber"       Color="#FBBF24"/>
+
+        <!-- Global Styles -->
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextHi}"/>
+        </Style>
+
+        <!-- NAV BUTTON -->
+        <Style x:Key="NavBtn" TargetType="Button">
+            <Setter Property="Background"                 Value="Transparent"/>
+            <Setter Property="Foreground"                 Value="{StaticResource TextMid}"/>
+            <Setter Property="BorderThickness"            Value="0"/>
+            <Setter Property="Height"                     Value="42"/>
+            <Setter Property="HorizontalAlignment"        Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Cursor"                     Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid>
+                            <Border x:Name="Bg" Background="Transparent" CornerRadius="0,6,6,0" Margin="0,1,8,1"/>
+                            <Border x:Name="Pill" Background="Transparent" Width="3"
+                                    HorizontalAlignment="Left" CornerRadius="0,2,2,0"/>
+                            <ContentPresenter Margin="20,0,12,0" VerticalAlignment="Center"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg"   Property="Background" Value="#1E1E22"/>
+                                <Setter Property="Foreground" Value="{StaticResource TextHi}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="NavBtnActive" TargetType="Button" BasedOn="{StaticResource NavBtn}">
+            <Setter Property="Foreground" Value="{StaticResource Accent}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid>
+                            <Border x:Name="Bg" Background="#16532A1A" CornerRadius="0,6,6,0" Margin="0,1,8,1"/>
+                            <Border Background="{StaticResource Accent}" Width="3"
+                                    HorizontalAlignment="Left" CornerRadius="0,2,2,0"/>
+                            <ContentPresenter Margin="20,0,12,0" VerticalAlignment="Center"/>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ICON BUTTON (circle) -->
+        <Style x:Key="IconBtn" TargetType="Button">
+            <Setter Property="Background"      Value="{StaticResource BgRaised}"/>
+            <Setter Property="Foreground"      Value="{StaticResource TextMid}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Width"           Value="32"/>
+            <Setter Property="Height"          Value="32"/>
+            <Setter Property="Cursor"          Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="R" Background="{TemplateBinding Background}" CornerRadius="8">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="R" Property="Background" Value="#3B82F620"/>
+                                <Setter Property="Foreground" Value="{StaticResource Blue}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- PRIMARY BUTTON -->
+        <Style x:Key="BtnPrimary" TargetType="Button">
+            <Setter Property="Background"      Value="{StaticResource Accent}"/>
+            <Setter Property="Foreground"      Value="#0A1F12"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Height"          Value="34"/>
+            <Setter Property="FontWeight"      Value="SemiBold"/>
+            <Setter Property="Cursor"          Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="R" Background="{TemplateBinding Background}" CornerRadius="7" Padding="16,0">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="R" Property="Opacity" Value="0.88"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="R" Property="Opacity" Value="0.72"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- GHOST BUTTON -->
+        <Style x:Key="BtnGhost" TargetType="Button">
+            <Setter Property="Background"      Value="Transparent"/>
+            <Setter Property="Foreground"      Value="{StaticResource TextMid}"/>
+            <Setter Property="BorderBrush"     Value="{StaticResource Border}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Height"          Value="30"/>
+            <Setter Property="Cursor"          Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="R" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6" Padding="12,0">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="R" Property="Background" Value="#1E1E22"/>
+                                <Setter Property="Foreground" Value="{StaticResource TextHi}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="BtnDanger" TargetType="Button" BasedOn="{StaticResource BtnGhost}">
+            <Setter Property="Foreground"  Value="{StaticResource Red}"/>
+            <Setter Property="BorderBrush" Value="#F8717130"/>
+        </Style>
+
+        <!-- TEXTBOX -->
+        <Style TargetType="TextBox">
+            <Setter Property="Background"      Value="{StaticResource BgRaised}"/>
+            <Setter Property="Foreground"      Value="{StaticResource TextHi}"/>
+            <Setter Property="BorderBrush"     Value="{StaticResource Border}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding"         Value="10,7"/>
+            <Setter Property="CaretBrush"      Value="{StaticResource Accent}"/>
+            <Setter Property="SelectionBrush"  Value="{StaticResource AccentLow}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="R" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="7">
+                            <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter TargetName="R" Property="BorderBrush" Value="{StaticResource Accent}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- COMBOBOX -->
+        <Style TargetType="ComboBox">
+            <Setter Property="Background"      Value="{StaticResource BgRaised}"/>
+            <Setter Property="Foreground"      Value="{StaticResource TextHi}"/>
+            <Setter Property="BorderBrush"     Value="{StaticResource Border}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Height"          Value="34"/>
+            <Setter Property="Padding"         Value="10,0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <Border x:Name="Root"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="7"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="28"/>
+                                </Grid.ColumnDefinitions>
+                                <ContentPresenter Grid.Column="0"
+                                                  Content="{TemplateBinding SelectionBoxItem}"
+                                                  ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                                  TextElement.Foreground="{StaticResource TextHi}"
+                                                  Margin="10,0,0,0" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1" Text="&#xE70D;"
+                                           FontFamily="Segoe MDL2 Assets" FontSize="10"
+                                           Foreground="{StaticResource TextMid}"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Grid>
+                            <ToggleButton Opacity="0"
+                                          IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource AncestorType=ComboBox}}"/>
+                            <Popup IsOpen="{TemplateBinding IsDropDownOpen}" AllowsTransparency="True"
+                                   Focusable="False" Placement="Bottom" PopupAnimation="Slide">
+                                <Border Background="{StaticResource BgCard}"
+                                        BorderBrush="{StaticResource Border}" BorderThickness="1"
+                                        CornerRadius="7" Margin="0,4,0,0"
+                                        MinWidth="{TemplateBinding ActualWidth}">
+                                    <ScrollViewer MaxHeight="200">
+                                        <ItemsPresenter/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource Accent}"/>
+                            </Trigger>
+                            <Trigger Property="IsDropDownOpen" Value="True">
+                                <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource Accent}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="ItemContainerStyle">
+                <Setter.Value>
+                    <Style TargetType="ComboBoxItem">
+                        <Setter Property="Foreground" Value="{StaticResource TextHi}"/>
+                        <Setter Property="Background" Value="Transparent"/>
+                        <Setter Property="Padding"    Value="10,8"/>
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ComboBoxItem">
+                                    <Border x:Name="R" Background="{TemplateBinding Background}"
+                                            Padding="{TemplateBinding Padding}">
+                                        <ContentPresenter/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="R" Property="Background" Value="{StaticResource BgRaised}"/>
+                                        </Trigger>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter TargetName="R" Property="Background" Value="{StaticResource AccentLow}"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- LISTBOX -->
+        <Style TargetType="ListBox">
+            <Setter Property="Background"      Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding"         Value="0"/>
+            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
+        </Style>
+
+        <!-- LISTBOXITEM -->
+        <Style TargetType="ListBoxItem">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{StaticResource TextHi}"/>
+            <Setter Property="Padding"    Value="0"/>
+            <Setter Property="Margin"     Value="0,2"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="R" Background="{TemplateBinding Background}" CornerRadius="8">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="R" Property="Background" Value="#26262B"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="R" Property="Background" Value="#16532A30"/>
+                                <Setter TargetName="R" Property="BorderBrush" Value="#22C55E30"/>
+                                <Setter TargetName="R" Property="BorderThickness" Value="1"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- SLIDER -->
+        <Style x:Key="VolumeSlider" TargetType="Slider">
+            <Setter Property="Minimum"          Value="0"/>
+            <Setter Property="Maximum"          Value="100"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Slider">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto" MinHeight="{TemplateBinding MinHeight}"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Track x:Name="PART_Track" Grid.Row="1">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Command="Slider.DecreaseLarge">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="RepeatButton">
+                                                <Border Background="{StaticResource Accent}" Height="4" CornerRadius="2"/>
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+                                </Track.DecreaseRepeatButton>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Command="Slider.IncreaseLarge">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="RepeatButton">
+                                                <Border Background="{StaticResource BgRaised}" Height="4" CornerRadius="2"/>
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+                                </Track.IncreaseRepeatButton>
+                                <Track.Thumb>
+                                    <Thumb>
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Border Width="14" Height="14" Background="{StaticResource Accent}"
+                                                        CornerRadius="7" BorderBrush="#0F0F11" BorderThickness="2"/>
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- CHECKBOX -->
+        <Style TargetType="CheckBox">
+            <Setter Property="Foreground" Value="{StaticResource TextHi}"/>
+            <Setter Property="Cursor"     Value="Hand"/>
+        </Style>
+
+        <!-- SCROLLBAR -->
+        <Style x:Key="{x:Type ScrollBar}" TargetType="ScrollBar">
+            <Setter Property="Width"      Value="6"/>
+            <Setter Property="MinWidth"   Value="6"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollBar">
+                        <Grid Background="Transparent">
+                            <Track x:Name="PART_Track" IsDirectionReversed="True">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Command="ScrollBar.LineUpCommand" Opacity="0"
+                                                  Focusable="False" Height="0"/>
+                                </Track.DecreaseRepeatButton>
+                                <Track.Thumb>
+                                    <Thumb>
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Border Background="#3A3A42" CornerRadius="3" Margin="1,0"/>
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Command="ScrollBar.LineDownCommand" Opacity="0"
+                                                  Focusable="False" Height="0"/>
+                                </Track.IncreaseRepeatButton>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- SCROLLVIEWER -->
+        <Style x:Key="{x:Type ScrollViewer}" TargetType="ScrollViewer">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollViewer">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <ScrollContentPresenter Grid.Column="0"/>
+                            <ScrollBar Grid.Column="1" x:Name="PART_VerticalScrollBar"
+                                       Orientation="Vertical"
+                                       Value="{TemplateBinding VerticalOffset}"
+                                       Maximum="{TemplateBinding ScrollableHeight}"
+                                       ViewportSize="{TemplateBinding ViewportHeight}"
+                                       Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}"/>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- CARD -->
+        <Style x:Key="Card" TargetType="Border">
+            <Setter Property="Background"      Value="{StaticResource BgCard}"/>
+            <Setter Property="BorderBrush"     Value="{StaticResource Border}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius"    Value="10"/>
+            <Setter Property="Padding"         Value="16"/>
+        </Style>
+
+        <!-- LABEL -->
+        <Style x:Key="Label" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextLow}"/>
+            <Setter Property="FontSize"   Value="10.5"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin"     Value="0,0,0,6"/>
+        </Style>
+    </Window.Resources>
+
+    <Border Background="{StaticResource BgBase}" CornerRadius="0"
+            BorderBrush="{StaticResource Border}" BorderThickness="0"
+            MouseLeftButtonDown="TitleBar_MouseLeftButtonDown"
+            TextElement.Foreground="{StaticResource TextHi}">
+        <Grid>
+            <!-- ══════════════════════════════════ MAIN LAYOUT -->
+            <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="196"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- ══════════════════════════════════ SIDEBAR -->
+        <Border Grid.Column="0" Background="{StaticResource BgSurface}"
+                BorderBrush="{StaticResource Border}" BorderThickness="0,0,1,0">
+            <DockPanel>
+                <!-- Logo + window controls -->
+                <Grid DockPanel.Dock="Top">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <StackPanel Margin="16,16,16,14">
+                        <StackPanel Orientation="Horizontal">
+                            <Border Background="{StaticResource AccentLow}" CornerRadius="8"
+                                    Width="30" Height="30" Margin="0,0,10,0">
+                                <TextBlock Text="&#xE8D6;" FontFamily="Segoe MDL2 Assets" Foreground="{StaticResource Accent}"
+                                           FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="EchoX" Foreground="{StaticResource TextHi}"
+                                           FontSize="15" FontWeight="Bold"/>
+                                <TextBlock Text="Audio Manager" Foreground="{StaticResource TextLow}"
+                                           FontSize="10"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+
+                <Separator DockPanel.Dock="Top" Background="{StaticResource Border}" Height="1" Margin="0,0,0,8"/>
+
+                <!-- Version pinned to bottom — must be declared before the fill item -->
+                <TextBlock DockPanel.Dock="Bottom" Text="v1.0.0"
+                           Foreground="{StaticResource TextLow}" FontSize="11"
+                           Margin="20,0,0,18" VerticalAlignment="Bottom"/>
+
+                <!-- Nav -->
+                <StackPanel DockPanel.Dock="Top" Margin="0,4,0,0">
+                    <Button x:Name="BtnNav0" Tag="Communication" Click="SidebarButton_Click"
+                            Style="{StaticResource NavBtnActive}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE720;" FontFamily="Segoe MDL2 Assets" FontSize="13" Margin="0,0,10,0"
+                                       Foreground="{StaticResource Accent}"/>
+                            <TextBlock Text="Devices" FontSize="13" Foreground="{StaticResource Accent}"/>
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="BtnNav1" Tag="Profiles" Click="SidebarButton_Click"
+                            Style="{StaticResource NavBtn}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE81E;" FontFamily="Segoe MDL2 Assets" FontSize="13" Margin="0,0,10,0"
+                                       Foreground="{StaticResource TextMid}"/>
+                            <TextBlock Text="Profiles" FontSize="13" Foreground="{StaticResource TextMid}"/>
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="BtnNav2" Tag="Shortcuts" Click="SidebarButton_Click"
+                            Style="{StaticResource NavBtn}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE92E;" FontFamily="Segoe MDL2 Assets" FontSize="13" Margin="0,0,10,0"
+                                       Foreground="{StaticResource TextMid}"/>
+                            <TextBlock Text="Shortcuts" FontSize="13" Foreground="{StaticResource TextMid}"/>
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="BtnNav3" Tag="Settings" Click="SidebarButton_Click"
+                            Style="{StaticResource NavBtn}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE713;" FontFamily="Segoe MDL2 Assets" FontSize="13" Margin="0,0,10,0"
+                                       Foreground="{StaticResource TextMid}"/>
+                            <TextBlock Text="Settings" FontSize="13" Foreground="{StaticResource TextMid}"/>
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="BtnNav4" Tag="About" Click="SidebarButton_Click"
+                            Style="{StaticResource NavBtn}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE946;" FontFamily="Segoe MDL2 Assets" FontSize="13" Margin="0,0,10,0"
+                                       Foreground="{StaticResource TextMid}"/>
+                            <TextBlock Text="About" FontSize="13" Foreground="{StaticResource TextMid}"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+
+            </DockPanel>
+        </Border>
+
+        <!-- ══════════════════════════════════ CONTENT -->
+        <TabControl x:Name="MainTabControl" Grid.Column="1"
+                    Background="{StaticResource BgBase}" BorderThickness="0" SelectedIndex="0">
+            <TabControl.ItemContainerStyle>
+                <Style TargetType="TabItem">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                </Style>
+            </TabControl.ItemContainerStyle>
+
+            <!-- ──────────────────────── DEVICES TAB -->
+            <TabItem Header="Communication">
+                <Grid Margin="28,24,28,24">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="14"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="14"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Header -->
+                    <Grid Grid.Row="0">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Devices" Foreground="{StaticResource TextHi}"
+                                           FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                <!-- Profile name inline next to heading -->
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="10,0,0,0">
+                                    <StackPanel.Style>
+                                        <Style TargetType="StackPanel">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding DevicesViewModel.ActiveProfileName}" Value="{x:Null}">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </StackPanel.Style>
+                                    <TextBlock Text="|" Foreground="{StaticResource TextLow}"
+                                               FontSize="18" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="&#xE8F1;" FontFamily="Segoe MDL2 Assets"
+                                               Foreground="{StaticResource Accent}"
+                                               FontSize="12" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding DevicesViewModel.ActiveProfileName}"
+                                               Foreground="{StaticResource Accent}"
+                                               FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </StackPanel>
+                            <TextBlock Text="Select a device to set it as the Windows default"
+                                       Foreground="{StaticResource TextMid}" FontSize="12" Margin="0,3,0,0"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Device lists -->
+                    <Grid Grid.Row="2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="14"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Input -->
+                        <Border Grid.Column="0" Style="{StaticResource Card}" Padding="0">
+                            <DockPanel>
+                                <Border DockPanel.Dock="Top" Padding="14,12,14,12"
+                                        BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE720;" FontFamily="Segoe MDL2 Assets"
+                                                   Foreground="{StaticResource TextMid}"
+                                                   FontSize="13" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="Microphones" Foreground="{StaticResource TextHi}"
+                                                   FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
+                                <ListBox DockPanel.Dock="Top" Margin="6,6,6,6"
+                                         ItemsSource="{Binding DevicesViewModel.InputDevices}"
+                                         SelectedItem="{Binding DevicesViewModel.CurrentInputDevice}">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="6,8">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <!-- Mic icon dot -->
+                                                <Border Grid.Column="0" Width="8" Height="8" CornerRadius="4"
+                                                        Margin="0,0,10,0" VerticalAlignment="Center">
+                                                    <Border.Style>
+                                                        <Style TargetType="Border">
+                                                            <Setter Property="Background" Value="{StaticResource TextLow}"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=ListBoxItem}, Path=IsSelected}" Value="True">
+                                                                    <Setter Property="Background" Value="{StaticResource Accent}"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Border.Style>
+                                                </Border>
+                                                <TextBlock Grid.Column="1" Text="{Binding FullName}"
+                                                           Foreground="{StaticResource TextHi}"
+                                                           FontSize="13" VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                                <Button Grid.Column="2" ToolTip="Set as default call device"
+                                                        Command="{Binding DataContext.DevicesViewModel.SetCallInputCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                        CommandParameter="{Binding}"
+                                                        Margin="8,0,0,0" Width="26" Height="26" Cursor="Hand"
+                                                        BorderThickness="0" Background="Transparent">
+                                                    <Button.Style>
+                                                        <Style TargetType="Button">
+                                                            <Setter Property="Template">
+                                                                <Setter.Value>
+                                                                    <ControlTemplate TargetType="Button">
+                                                                        <TextBlock x:Name="Ico" Text="📞" FontSize="13"
+                                                                                   Foreground="{StaticResource TextLow}"
+                                                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                                        <ControlTemplate.Triggers>
+                                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                                <Setter TargetName="Ico" Property="Foreground" Value="{StaticResource Accent}"/>
+                                                                            </Trigger>
+                                                                        </ControlTemplate.Triggers>
+                                                                    </ControlTemplate>
+                                                                </Setter.Value>
+                                                            </Setter>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsCallDevice}" Value="True">
+                                                                    <Setter Property="Template">
+                                                                        <Setter.Value>
+                                                                            <ControlTemplate TargetType="Button">
+                                                                                <TextBlock x:Name="Ico" Text="📞" FontSize="13"
+                                                                                           Foreground="{StaticResource Accent}"
+                                                                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                                                <ControlTemplate.Triggers>
+                                                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                                                        <Setter TargetName="Ico" Property="Foreground" Value="{StaticResource AccentDim}"/>
+                                                                                    </Trigger>
+                                                                                </ControlTemplate.Triggers>
+                                                                            </ControlTemplate>
+                                                                        </Setter.Value>
+                                                                    </Setter>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Button.Style>
+                                                </Button>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </DockPanel>
+                        </Border>
+
+                        <!-- Output -->
+                        <Border Grid.Column="2" Style="{StaticResource Card}" Padding="0">
+                            <DockPanel>
+                                <Border DockPanel.Dock="Top" Padding="14,12,14,12"
+                                        BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE767;" FontFamily="Segoe MDL2 Assets"
+                                                   Foreground="{StaticResource TextMid}"
+                                                   FontSize="13" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="Speakers &amp; Headphones" Foreground="{StaticResource TextHi}"
+                                                   FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
+                                <ListBox DockPanel.Dock="Top" Margin="6,6,6,6"
+                                         ItemsSource="{Binding DevicesViewModel.OutputDevices}"
+                                         SelectedItem="{Binding DevicesViewModel.CurrentOutputDevice}">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="6,8">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Border Grid.Column="0" Width="8" Height="8" CornerRadius="4"
+                                                        Margin="0,0,10,0" VerticalAlignment="Center">
+                                                    <Border.Style>
+                                                        <Style TargetType="Border">
+                                                            <Setter Property="Background" Value="{StaticResource TextLow}"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=ListBoxItem}, Path=IsSelected}" Value="True">
+                                                                    <Setter Property="Background" Value="{StaticResource Accent}"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Border.Style>
+                                                </Border>
+                                                <TextBlock Grid.Column="1" Text="{Binding FullName}"
+                                                           Foreground="{StaticResource TextHi}"
+                                                           FontSize="13" VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                                <Button Grid.Column="2" ToolTip="Set as default call device"
+                                                        Command="{Binding DataContext.DevicesViewModel.SetCallOutputCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                        CommandParameter="{Binding}"
+                                                        Margin="8,0,4,0" Width="26" Height="26" Cursor="Hand"
+                                                        BorderThickness="0" Background="Transparent">
+                                                    <Button.Style>
+                                                        <Style TargetType="Button">
+                                                            <Setter Property="Template">
+                                                                <Setter.Value>
+                                                                    <ControlTemplate TargetType="Button">
+                                                                        <TextBlock x:Name="Ico" Text="📞" FontSize="13"
+                                                                                   Foreground="{StaticResource TextLow}"
+                                                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                                        <ControlTemplate.Triggers>
+                                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                                <Setter TargetName="Ico" Property="Foreground" Value="{StaticResource Accent}"/>
+                                                                            </Trigger>
+                                                                        </ControlTemplate.Triggers>
+                                                                    </ControlTemplate>
+                                                                </Setter.Value>
+                                                            </Setter>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsCallDevice}" Value="True">
+                                                                    <Setter Property="Template">
+                                                                        <Setter.Value>
+                                                                            <ControlTemplate TargetType="Button">
+                                                                                <TextBlock x:Name="Ico" Text="📞" FontSize="13"
+                                                                                           Foreground="{StaticResource Accent}"
+                                                                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                                                <ControlTemplate.Triggers>
+                                                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                                                        <Setter TargetName="Ico" Property="Foreground" Value="{StaticResource AccentDim}"/>
+                                                                                    </Trigger>
+                                                                                </ControlTemplate.Triggers>
+                                                                            </ControlTemplate>
+                                                                        </Setter.Value>
+                                                                    </Setter>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Button.Style>
+                                                </Button>
+                                                <Button Grid.Column="3" ToolTip="Play test tone"
+                                                        Command="{Binding DataContext.DevicesViewModel.TestOutputCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                        CommandParameter="{Binding}"
+                                                        Width="26" Height="26" Cursor="Hand"
+                                                        BorderThickness="0" Background="Transparent">
+                                                    <Button.Template>
+                                                        <ControlTemplate TargetType="Button">
+                                                            <TextBlock x:Name="Icon" Text="▶" FontSize="11"
+                                                                       Foreground="{StaticResource TextMid}"
+                                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                            <ControlTemplate.Triggers>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter TargetName="Icon" Property="Foreground" Value="{StaticResource Accent}"/>
+                                                                </Trigger>
+                                                                <Trigger Property="IsPressed" Value="True">
+                                                                    <Setter TargetName="Icon" Property="Foreground" Value="{StaticResource AccentDim}"/>
+                                                                </Trigger>
+                                                            </ControlTemplate.Triggers>
+                                                        </ControlTemplate>
+                                                    </Button.Template>
+                                                </Button>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </DockPanel>
+                        </Border>
+                    </Grid>
+
+                    <!-- Volume sliders -->
+                    <Border Grid.Row="4" Style="{StaticResource Card}" Padding="18,14">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="28"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Foreground="{StaticResource TextMid}" FontSize="12" VerticalAlignment="Center">
+                                        <Run FontFamily="Segoe MDL2 Assets" Text="&#xE720;"/>
+                                        <Run Text="  Input Volume"/>
+                                    </TextBlock>
+                                    <TextBlock Grid.Column="1" Foreground="{StaticResource Accent}"
+                                               FontSize="12" FontWeight="SemiBold">
+                                        <TextBlock.Text>
+                                            <Binding Path="DevicesViewModel.InputVolume" StringFormat="{}{0:0}%"/>
+                                        </TextBlock.Text>
+                                    </TextBlock>
+                                </Grid>
+                                <Slider Style="{StaticResource VolumeSlider}" Value="{Binding DevicesViewModel.InputVolume}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Foreground="{StaticResource TextMid}" FontSize="12" VerticalAlignment="Center">
+                                        <Run FontFamily="Segoe MDL2 Assets" Text="&#xE767;"/>
+                                        <Run Text="  Output Volume"/>
+                                    </TextBlock>
+                                    <TextBlock Grid.Column="1" Foreground="{StaticResource Accent}"
+                                               FontSize="12" FontWeight="SemiBold">
+                                        <TextBlock.Text>
+                                            <Binding Path="DevicesViewModel.OutputVolume" StringFormat="{}{0:0}%"/>
+                                        </TextBlock.Text>
+                                    </TextBlock>
+                                </Grid>
+                                <Slider Style="{StaticResource VolumeSlider}" Value="{Binding DevicesViewModel.OutputVolume}"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <!-- ──────────────────────── PROFILES TAB -->
+            <TabItem Header="Profiles">
+                <Grid Margin="28,24,28,24">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="16"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="14"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0">
+                        <TextBlock Text="Profiles" Foreground="{StaticResource TextHi}"
+                                   FontSize="20" FontWeight="SemiBold"/>
+                        <TextBlock Text="Save device combinations and activate them instantly"
+                                   Foreground="{StaticResource TextMid}" FontSize="12" Margin="0,3,0,0"/>
+                    </StackPanel>
+
+                    <!-- Create form — two rows -->
+                    <Border Grid.Row="2" Style="{StaticResource Card}" Padding="18,16">
+                        <StackPanel>
+                            <!-- Row 1: Name + Save -->
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="12"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="NAME" Style="{StaticResource Label}"/>
+                                    <TextBox Text="{Binding ProfilesViewModel.ProfileName, UpdateSourceTrigger=PropertyChanged}"
+                                             Height="34"/>
+                                </StackPanel>
+                                <Button Grid.Column="2" Content="Save" Style="{StaticResource BtnPrimary}"
+                                        Command="{Binding ProfilesViewModel.SaveCommand}"
+                                        Width="80" VerticalAlignment="Bottom" Height="34"/>
+                            </Grid>
+                            <!-- Row 2: Mic + Speaker + Call -->
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="12"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="12"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="MICROPHONE" Style="{StaticResource Label}"/>
+                                    <ComboBox ItemsSource="{Binding ProfilesViewModel.InputDevices}"
+                                              SelectedItem="{Binding ProfilesViewModel.SelectedInputDevice}"
+                                              DisplayMemberPath="FullName"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="SPEAKER" Style="{StaticResource Label}"/>
+                                    <ComboBox ItemsSource="{Binding ProfilesViewModel.OutputDevices}"
+                                              SelectedItem="{Binding ProfilesViewModel.SelectedOutputDevice}"
+                                              DisplayMemberPath="FullName"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="4">
+                                    <TextBlock Text="COMMUNICATION DEVICE" Style="{StaticResource Label}"/>
+                                    <ComboBox ItemsSource="{Binding ProfilesViewModel.AllDevices}"
+                                              SelectedItem="{Binding ProfilesViewModel.SelectedCallDevice}"
+                                              DisplayMemberPath="FullName"/>
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Profiles list -->
+                    <Border Grid.Row="4" Style="{StaticResource Card}" Padding="0">
+                        <DockPanel>
+                            <Border DockPanel.Dock="Top" Padding="16,13,16,13"
+                                    BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1">
+                                <TextBlock Text="Saved Profiles" Foreground="{StaticResource TextHi}"
+                                           FontSize="13" FontWeight="SemiBold"/>
+                            </Border>
+                            <ListBox Margin="8,6,8,8" ItemsSource="{Binding ProfilesViewModel.Profiles}">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="8,10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Border Grid.Column="0" Background="{StaticResource AccentLow}"
+                                                    CornerRadius="8" Width="34" Height="34" Margin="0,0,12,0">
+                                                <TextBlock Text="&#xE81E;" FontFamily="Segoe MDL2 Assets"
+                                                           Foreground="{StaticResource Accent}" FontSize="15"
+                                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                            <TextBlock Grid.Column="1" Text="{Binding Name}"
+                                                       Foreground="{StaticResource TextHi}"
+                                                       FontSize="14" FontWeight="SemiBold"
+                                                       VerticalAlignment="Center"/>
+                                            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                                <Button Content="Activate" Style="{StaticResource BtnPrimary}"
+                                                        Command="{Binding DataContext.ProfilesViewModel.ActivateCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                        CommandParameter="{Binding}" Width="72" Margin="0,0,6,0"/>
+                                                <Button Content="Edit" Style="{StaticResource BtnGhost}"
+                                                        Command="{Binding DataContext.ProfilesViewModel.EditCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                        CommandParameter="{Binding}" Width="50" Margin="0,0,6,0"/>
+                                                <Button Content="Delete" Style="{StaticResource BtnDanger}"
+                                                        Command="{Binding DataContext.ProfilesViewModel.DeleteCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                        CommandParameter="{Binding}" Width="58"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </DockPanel>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <!-- ──────────────────────── SHORTCUTS TAB -->
+            <TabItem Header="Shortcuts">
+                <StackPanel Margin="28,24,28,24">
+                    <TextBlock Text="Shortcuts" Foreground="{StaticResource TextHi}"
+                               FontSize="20" FontWeight="SemiBold"/>
+                    <TextBlock Text="Global hotkeys — work even when EchoX is in the tray"
+                               Foreground="{StaticResource TextMid}" FontSize="12" Margin="0,3,0,20"/>
+
+                    <Border Style="{StaticResource Card}" Padding="0">
+                        <StackPanel>
+                            <Border Padding="18,16" BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border Grid.Column="0" Background="{StaticResource AccentLow}"
+                                            CornerRadius="8" Width="36" Height="36" Margin="0,0,14,0">
+                                        <TextBlock Text="&#xE81E;" FontFamily="Segoe MDL2 Assets"
+                                                   Foreground="{StaticResource Accent}" FontSize="16"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <TextBlock Text="Cycle Profiles" Foreground="{StaticResource TextHi}"
+                                                   FontSize="13" FontWeight="SemiBold"/>
+                                        <TextBlock Text="Switch to the next saved audio profile"
+                                                   Foreground="{StaticResource TextMid}" FontSize="12"/>
+                                    </StackPanel>
+                                    <Border Grid.Column="2" Background="{StaticResource BgRaised}"
+                                            BorderBrush="{StaticResource Border}" BorderThickness="1"
+                                            CornerRadius="7" Padding="12,6">
+                                        <TextBlock Text="Ctrl + Alt + S" Foreground="{StaticResource TextHi}"
+                                                   FontFamily="Consolas" FontSize="12"/>
+                                    </Border>
+                                </Grid>
+                            </Border>
+                            <Border Padding="18,16">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border Grid.Column="0" Background="#3B1A1A"
+                                            CornerRadius="8" Width="36" Height="36" Margin="0,0,14,0">
+                                        <TextBlock Text="&#xE720;" FontFamily="Segoe MDL2 Assets"
+                                                   Foreground="{StaticResource Red}" FontSize="16"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <TextBlock Text="Toggle Mic Mute" Foreground="{StaticResource TextHi}"
+                                                   FontSize="13" FontWeight="SemiBold"/>
+                                        <TextBlock Text="Mute or unmute the default microphone"
+                                                   Foreground="{StaticResource TextMid}" FontSize="12"/>
+                                    </StackPanel>
+                                    <Border Grid.Column="2" Background="{StaticResource BgRaised}"
+                                            BorderBrush="{StaticResource Border}" BorderThickness="1"
+                                            CornerRadius="7" Padding="12,6">
+                                        <TextBlock Text="Ctrl + Alt + K" Foreground="{StaticResource TextHi}"
+                                                   FontFamily="Consolas" FontSize="12"/>
+                                    </Border>
+                                </Grid>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </TabItem>
+
+            <!-- ──────────────────────── SETTINGS TAB -->
+            <TabItem Header="Settings">
+                <StackPanel Margin="28,24,28,24">
+                    <TextBlock Text="Settings" Foreground="{StaticResource TextHi}"
+                               FontSize="20" FontWeight="SemiBold"/>
+                    <TextBlock Text="Configure EchoX behaviour"
+                               Foreground="{StaticResource TextMid}" FontSize="12" Margin="0,3,0,20"/>
+                    <Border Style="{StaticResource Card}" Padding="18,16">
+                        <StackPanel>
+                            <TextBlock Text="STARTUP" Style="{StaticResource Label}"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Launch with Windows" Foreground="{StaticResource TextHi}"
+                                               FontSize="13" FontWeight="SemiBold"/>
+                                    <TextBlock Text="EchoX starts minimised to the system tray"
+                                               Foreground="{StaticResource TextMid}" FontSize="12" Margin="0,2,0,0"/>
+                                </StackPanel>
+                                <CheckBox Grid.Column="1" VerticalAlignment="Center"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </TabItem>
+
+            <!-- ──────────────────────── ABOUT TAB -->
+            <TabItem Header="About">
+                <StackPanel Margin="28,24,28,24">
+                    <TextBlock Text="About" Foreground="{StaticResource TextHi}"
+                               FontSize="20" FontWeight="SemiBold" Margin="0,0,0,20"/>
+                    <Border Style="{StaticResource Card}" Padding="20,18">
+                        <StackPanel>
+                            <Border Background="{StaticResource AccentLow}" CornerRadius="12"
+                                    Width="52" Height="52" HorizontalAlignment="Left" Margin="0,0,0,16">
+                                <TextBlock Text="&#xE8D6;" FontFamily="Segoe MDL2 Assets"
+                                           Foreground="{StaticResource Accent}" FontSize="26"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Text="EchoX" Foreground="{StaticResource TextHi}"
+                                       FontSize="18" FontWeight="Bold"/>
+                            <TextBlock Text="Version 1.0.0" Foreground="{StaticResource Accent}"
+                                       FontSize="12" Margin="0,4,0,14"/>
+                            <TextBlock Foreground="{StaticResource TextMid}" FontSize="13"
+                                       TextWrapping="Wrap" LineHeight="22"
+                                       Text="A lightweight audio device manager for Windows. Switch between microphones and speakers instantly using profiles and global hotkeys — all from the system tray."/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </TabItem>
+
+        </TabControl>
+            </Grid>
+
+            <!-- Window controls — float top-right over everything -->
+            <StackPanel HorizontalAlignment="Right" VerticalAlignment="Top"
+                        Orientation="Horizontal" Margin="0,8,10,0" Panel.ZIndex="99">
+                <Button Click="MinimizeBtn_Click" Width="38" Height="32"
+                        Background="Transparent" BorderThickness="0" Cursor="Hand">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="R" Background="Transparent" CornerRadius="6">
+                                <TextBlock Text="─" Foreground="{StaticResource TextMid}"
+                                           FontSize="14" FontWeight="SemiBold"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="R" Property="Background" Value="{StaticResource BgRaised}"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+                <Button Click="MaximizeBtn_Click" Width="38" Height="32"
+                        Background="Transparent" BorderThickness="0" Cursor="Hand">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="R" Background="Transparent" CornerRadius="6">
+                                <TextBlock Text="□" Foreground="{StaticResource TextMid}"
+                                           FontSize="14" FontWeight="SemiBold"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="R" Property="Background" Value="{StaticResource BgRaised}"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+                <Button Click="CloseBtn_Click" Width="38" Height="32"
+                        Background="Transparent" BorderThickness="0" Cursor="Hand">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="R" Background="Transparent" CornerRadius="6">
+                                <TextBlock x:Name="Lbl" Text="✕" Foreground="{StaticResource TextMid}"
+                                           FontSize="14" FontWeight="SemiBold"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="R"   Property="Background" Value="#3F1515"/>
+                                    <Setter TargetName="Lbl" Property="Foreground" Value="#F87171"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+            </StackPanel>
+
+        </Grid>
+    </Border>
+</Window>

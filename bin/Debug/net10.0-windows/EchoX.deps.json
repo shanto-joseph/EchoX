@@ -1,0 +1,75 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v10.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v10.0": {
+      "EchoX/1.0.0": {
+        "dependencies": {
+          "AudioSwitcher.AudioApi.CoreAudio": "3.0.3",
+          "Newtonsoft.Json": "13.0.4"
+        },
+        "runtime": {
+          "EchoX.dll": {}
+        }
+      },
+      "AudioSwitcher.AudioApi/3.0.0": {
+        "runtime": {
+          "lib/net40/AudioSwitcher.AudioApi.dll": {
+            "assemblyVersion": "3.0.0.209",
+            "fileVersion": "3.0.0.256"
+          }
+        }
+      },
+      "AudioSwitcher.AudioApi.CoreAudio/3.0.3": {
+        "dependencies": {
+          "AudioSwitcher.AudioApi": "3.0.0"
+        },
+        "runtime": {
+          "lib/net452/AudioSwitcher.AudioApi.CoreAudio.dll": {
+            "assemblyVersion": "3.0.0.209",
+            "fileVersion": "3.0.3.420"
+          }
+        }
+      },
+      "Newtonsoft.Json/13.0.4": {
+        "runtime": {
+          "lib/net6.0/Newtonsoft.Json.dll": {
+            "assemblyVersion": "13.0.0.0",
+            "fileVersion": "13.0.4.30916"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "EchoX/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "AudioSwitcher.AudioApi/3.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-AiYO8fCawsu/v6rZgDWta55GYzh9vs/FocW9xKhEGF3xsUJIgPaVsWeeBwoexMttueW6E8RS0Vp0o8w8dodjyQ==",
+      "path": "audioswitcher.audioapi/3.0.0",
+      "hashPath": "audioswitcher.audioapi.3.0.0.nupkg.sha512"
+    },
+    "AudioSwitcher.AudioApi.CoreAudio/3.0.3": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-O0XrFLuND0Ti/UmW24PvX36Tfhify6jOBpuIKw0wmWemzKQ6fS1uH36a+bNRny9LdqPGIQnFfDyieLo1otb/Lw==",
+      "path": "audioswitcher.audioapi.coreaudio/3.0.3",
+      "hashPath": "audioswitcher.audioapi.coreaudio.3.0.3.nupkg.sha512"
+    },
+    "Newtonsoft.Json/13.0.4": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-pdgNNMai3zv51W5aq268sujXUyx7SNdE2bj1wZcWjAQrKMFZV260lbqYop1d2GM67JI1huLRwxo9ZqnfF/lC6A==",
+      "path": "newtonsoft.json/13.0.4",
+      "hashPath": "newtonsoft.json.13.0.4.nupkg.sha512"
+    }
+  }
+}
