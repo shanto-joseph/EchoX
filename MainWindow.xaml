@@ -3,12 +3,15 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         xmlns:converters="clr-namespace:EchoX.Converters"
+        xmlns:ui="clr-namespace:EchoX.UI"
         Title="EchoX" Height="680" Width="1000"
+        MinHeight="680" MinWidth="1000"
         Icon="Assets/LOGO/EchoX_exe.ico"
         Background="#0F0F11" WindowStartupLocation="CenterScreen"
         FontFamily="Segoe UI" FontSize="13"
         WindowStyle="None" AllowsTransparency="False"
-        ResizeMode="CanResize">
+        ResizeMode="CanResize"
+        FocusVisualStyle="{x:Null}">
     <shell:WindowChrome.WindowChrome>
         <shell:WindowChrome CaptionHeight="0" ResizeBorderThickness="5"
                             CornerRadius="0" GlassFrameThickness="0"
@@ -207,6 +210,7 @@
 
         <!-- COMBOBOX -->
         <Style TargetType="ComboBox">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
             <Setter Property="Background"      Value="{StaticResource BgRaised}"/>
             <Setter Property="Foreground"      Value="{StaticResource TextHi}"/>
             <Setter Property="BorderBrush"     Value="{StaticResource Border}"/>
@@ -379,6 +383,7 @@
 
         <!-- CHECKBOX -->
         <Style TargetType="CheckBox">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
             <Setter Property="Foreground" Value="{StaticResource TextHi}"/>
             <Setter Property="Cursor"     Value="Hand"/>
         </Style>
@@ -772,45 +777,21 @@
                                                 </Button.Style>
                                             </Button>
 
-                                            <!-- Segmented Volume Meter (Discord Style) -->
-                                            <Grid Grid.Column="1" VerticalAlignment="Center" Margin="0,0,10,0">
-                                                <ProgressBar Value="{Binding DevicesViewModel.MicTestLevel}" 
-                                                             Maximum="100" Height="14" Background="Transparent" BorderThickness="0">
-                                                    <ProgressBar.Template>
-                                                        <ControlTemplate TargetType="ProgressBar">
-                                                            <Grid x:Name="TemplateRoot">
-                                                                <!-- Inactive background segments -->
-                                                                <Rectangle Fill="#2E2E34">
-                                                                    <Rectangle.OpacityMask>
-                                                                        <VisualBrush TileMode="Tile" Viewport="0,0,8,1" ViewportUnits="Absolute">
-                                                                            <VisualBrush.Visual>
-                                                                                <Rectangle Fill="White" Width="5" Height="14" RadiusX="1.5" RadiusY="1.5" Margin="0,0,3,0"/>
-                                                                            </VisualBrush.Visual>
-                                                                        </VisualBrush>
-                                                                    </Rectangle.OpacityMask>
-                                                                </Rectangle>
-                                                                
-                                                                <!-- Active colored segments (Bright Green #23A559) -->
-                                                                <Grid HorizontalAlignment="Left" Width="{Binding ElementName=PART_Indicator, Path=ActualWidth}" ClipToBounds="True">
-                                                                    <Rectangle Width="{Binding ElementName=TemplateRoot, Path=ActualWidth}" HorizontalAlignment="Left" Fill="#23A559">
-                                                                        <Rectangle.OpacityMask>
-                                                                            <VisualBrush TileMode="Tile" Viewport="0,0,8,1" ViewportUnits="Absolute">
-                                                                                <VisualBrush.Visual>
-                                                                                    <Rectangle Fill="White" Width="5" Height="14" RadiusX="1.5" RadiusY="1.5" Margin="0,0,3,0"/>
-                                                                                </VisualBrush.Visual>
-                                                                            </VisualBrush>
-                                                                        </Rectangle.OpacityMask>
-                                                                    </Rectangle>
-                                                                </Grid>
-                                                                
-                                                                <!-- Hidden tracks for measurement -->
-                                                                <Border x:Name="PART_Track" Visibility="Hidden"/>
-                                                                <Border x:Name="PART_Indicator" Visibility="Hidden" HorizontalAlignment="Left"/>
-                                                            </Grid>
-                                                        </ControlTemplate>
-                                                    </ProgressBar.Template>
-                                                </ProgressBar>
-                                            </Grid>
+                                            <!-- Segmented Level Meter — crisp pill bars -->
+                                            <ui:LevelMeterControl
+                                                Grid.Column="1"
+                                                VerticalAlignment="Center"
+                                                Margin="0,0,10,0"
+                                                Height="20"
+                                                Value="{Binding DevicesViewModel.MicTestLevel}"
+                                                Maximum="100"
+                                                BarWidth="6"
+                                                BarGap="4"
+                                                ActiveBrush="#23A559"
+                                                InactiveBrush="#3A3B45"
+                                                SnapsToDevicePixels="True"
+                                                UseLayoutRounding="True"
+                                                RenderOptions.EdgeMode="Aliased"/>
                                         </Grid>
 
                                         <DockPanel LastChildFill="False" Margin="0,14,0,0">
@@ -1478,8 +1459,8 @@
                     <Button.Template>
                         <ControlTemplate TargetType="Button">
                             <Border x:Name="R" Background="Transparent" CornerRadius="6">
-                                <TextBlock Text="─" Foreground="{StaticResource TextMid}"
-                                           FontSize="14" FontWeight="SemiBold"
+                                <TextBlock Text="&#xE921;" FontFamily="Segoe MDL2 Assets"
+                                           FontSize="11" Foreground="{StaticResource TextMid}"
                                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
                             <ControlTemplate.Triggers>
@@ -1495,9 +1476,24 @@
                     <Button.Template>
                         <ControlTemplate TargetType="Button">
                             <Border x:Name="R" Background="Transparent" CornerRadius="6">
-                                <TextBlock Text="□" Foreground="{StaticResource TextMid}"
-                                           FontSize="14" FontWeight="SemiBold"
-                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <!-- E922 = Maximize, E923 = Restore — swap based on WindowState -->
+                                <TextBlock x:Name="Ico"
+                                           Text="&#xE922;"
+                                           FontFamily="Segoe MDL2 Assets"
+                                           FontSize="11"
+                                           Foreground="{StaticResource TextMid}"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="&#xE922;"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding WindowState, RelativeSource={RelativeSource AncestorType=Window}}" Value="Maximized">
+                                                    <Setter Property="Text" Value="&#xE923;"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
                             </Border>
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">

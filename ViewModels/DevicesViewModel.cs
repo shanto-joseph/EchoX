@@ -387,18 +387,29 @@ namespace EchoX.ViewModels
         private void RefreshActiveProfile()
         {
             var profiles = _storageService.LoadProfiles();
-            var activeId = _storageService.LoadActiveProfileId();
-            
-            var match = profiles.FirstOrDefault(p => p.Id == activeId);
-            if (match == null)
+
+            // Find a profile matching both current devices exactly
+            var match = profiles.FirstOrDefault(p =>
+                p.InputDeviceId  == _currentInputDevice?.Id &&
+                p.OutputDeviceId == _currentOutputDevice?.Id);
+
+            if (match != null)
             {
-                // Fallback attempt by device matching
-                match = profiles.FirstOrDefault(p =>
-                    p.InputDeviceId  == _currentInputDevice?.Id &&
-                    p.OutputDeviceId == _currentOutputDevice?.Id);
+                _storageService.SaveActiveProfileId(match.Id);
             }
-            
+            else
+            {
+                // No profile matches the current device combo — clear active
+                _storageService.SaveActiveProfileId("");
+            }
+
             ActiveProfileName = match?.Name;
+
+            // Sync ProfilesViewModel visual highlight (no hardware switching)
+            var profVm = _mainWindowViewModel.ProfilesViewModel;
+            profVm.ActiveProfile = match != null
+                ? profVm.Profiles.FirstOrDefault(p => p.Id == match.Id)
+                : null;
         }
 
         public void UpdateDeviceMuteStates()
