@@ -62,5 +62,18 @@ namespace EchoX.Services
                 return _deviceCache;
             } catch { return new DeviceCache(); }
         }
+
+        public void SaveActiveProfileId(string id)
+        {
+            string path = Path.Combine(_folderPath, "active.dat");
+            try { File.WriteAllText(path, id); } catch { }
+        }
+
+        public string LoadActiveProfileId()
+        {
+            string path = Path.Combine(_folderPath, "active.dat");
+            if (!File.Exists(path)) return string.Empty;
+            try { return File.ReadAllText(path).Trim(); } catch { return string.Empty; }
+        }
     }
 }
