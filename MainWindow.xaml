@@ -2,7 +2,9 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        xmlns:converters="clr-namespace:EchoX.Converters"
         Title="EchoX" Height="680" Width="1000"
+        Icon="Assets/LOGO/EchoX.png"
         Background="#0F0F11" WindowStartupLocation="CenterScreen"
         FontFamily="Segoe UI" FontSize="13"
         WindowStyle="None" AllowsTransparency="False"
@@ -14,6 +16,9 @@
     </shell:WindowChrome.WindowChrome>
 
     <Window.Resources>
+        <converters:ObjectEqualityConverter x:Key="ObjectEqualityConverter"/>
+        <converters:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter"/>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
         <!-- Colors -->
         <SolidColorBrush x:Key="BgBase"      Color="#0F0F11"/>
         <SolidColorBrush x:Key="BgSurface"   Color="#17171A"/>
@@ -471,10 +476,9 @@
                     </Grid.RowDefinitions>
                     <StackPanel Margin="16,16,16,14">
                         <StackPanel Orientation="Horizontal">
-                            <Border Background="{StaticResource AccentLow}" CornerRadius="8"
-                                    Width="30" Height="30" Margin="0,0,10,0">
-                                <TextBlock Text="&#xE8D6;" FontFamily="Segoe MDL2 Assets" Foreground="{StaticResource Accent}"
-                                           FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            <Border Background="Transparent" CornerRadius="8" 
+                                    Width="32" Height="32" Margin="0,0,10,0">
+                                <Image Source="Assets/LOGO/EchoX.png" RenderOptions.BitmapScalingMode="HighQuality"/>
                             </Border>
                             <StackPanel VerticalAlignment="Center">
                                 <TextBlock Text="EchoX" Foreground="{StaticResource TextHi}"
@@ -963,120 +967,242 @@
                 </Grid>
             </TabItem>
 
-            <!-- ──────────────────────── PROFILES TAB -->
             <TabItem Header="Profiles">
-                <Grid Margin="28,24,28,24">
+                <Grid Margin="32">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="16"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="14"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
-                    <StackPanel Grid.Row="0">
-                        <TextBlock Text="Profiles" Foreground="{StaticResource TextHi}"
-                                   FontSize="20" FontWeight="SemiBold"/>
-                        <TextBlock Text="Save device combinations and activate them instantly"
-                                   Foreground="{StaticResource TextMid}" FontSize="12" Margin="0,3,0,0"/>
-                    </StackPanel>
-
-                    <!-- Create form — two rows -->
-                    <Border Grid.Row="2" Style="{StaticResource Card}" Padding="18,16">
-                        <StackPanel>
-                            <!-- Row 1: Name + Save -->
-                            <Grid Margin="0,0,0,12">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="12"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Grid.Column="0">
-                                    <TextBlock Text="NAME" Style="{StaticResource Label}"/>
-                                    <TextBox Text="{Binding ProfilesViewModel.ProfileName, UpdateSourceTrigger=PropertyChanged}"
-                                             Height="34"/>
-                                </StackPanel>
-                                <Button Grid.Column="2" Content="Save" Style="{StaticResource BtnPrimary}"
-                                        Command="{Binding ProfilesViewModel.SaveCommand}"
-                                        Width="80" VerticalAlignment="Bottom" Height="34"/>
-                            </Grid>
-                            <!-- Row 2: Mic + Speaker + Call -->
+                    <!-- SEARCH & ACTIONS HEADER -->
+                    <Grid Grid.Row="0" Margin="0,0,0,32">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        
+                        <!-- Search Bar -->
+                        <Border Grid.Column="0" Background="#0AFFFFFF" CornerRadius="12" Height="44" 
+                                HorizontalAlignment="Stretch" MaxWidth="1200" Padding="16,0" Margin="0,0,24,0">
                             <Grid>
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="12"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="12"/>
+                                    <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <StackPanel Grid.Column="0">
-                                    <TextBlock Text="MICROPHONE" Style="{StaticResource Label}"/>
-                                    <ComboBox ItemsSource="{Binding ProfilesViewModel.InputDevices}"
-                                              SelectedItem="{Binding ProfilesViewModel.SelectedInputDevice}"
-                                              DisplayMemberPath="FullName"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="2">
-                                    <TextBlock Text="SPEAKER" Style="{StaticResource Label}"/>
-                                    <ComboBox ItemsSource="{Binding ProfilesViewModel.OutputDevices}"
-                                              SelectedItem="{Binding ProfilesViewModel.SelectedOutputDevice}"
-                                              DisplayMemberPath="FullName"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="4">
-                                    <TextBlock Text="COMMUNICATION DEVICE" Style="{StaticResource Label}"/>
-                                    <ComboBox ItemsSource="{Binding ProfilesViewModel.AllDevices}"
-                                              SelectedItem="{Binding ProfilesViewModel.SelectedCallDevice}"
-                                              DisplayMemberPath="FullName"/>
-                                </StackPanel>
-                            </Grid>
-                        </StackPanel>
-                    </Border>
-
-                    <!-- Profiles list -->
-                    <Border Grid.Row="4" Style="{StaticResource Card}" Padding="0">
-                        <DockPanel>
-                            <Border DockPanel.Dock="Top" Padding="16,13,16,13"
-                                    BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1">
-                                <TextBlock Text="Saved Profiles" Foreground="{StaticResource TextHi}"
-                                           FontSize="13" FontWeight="SemiBold"/>
+                                <TextBlock Text="&#xE721;" FontFamily="Segoe MDL2 Assets" Foreground="{StaticResource TextLow}" 
+                                           FontSize="16" VerticalAlignment="Center" Margin="0,0,12,0" Opacity="0.5"/>
+                                <TextBox Grid.Column="1" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextHi}"
+                                         VerticalContentAlignment="Center" CaretBrush="{StaticResource Accent}"
+                                         FontSize="15" Text="{Binding ProfilesViewModel.SearchText, UpdateSourceTrigger=PropertyChanged}">
+                                        <TextBox.Style>
+                                            <Style TargetType="TextBox">
+                                                <Style.Resources>
+                                                    <VisualBrush x:Key="HintBrush" TileMode="None" Stretch="None" AlignmentX="Left">
+                                                        <VisualBrush.Visual>
+                                                            <TextBlock Text="Search profiles..." Foreground="{StaticResource TextLow}" Opacity="0.5"/>
+                                                        </VisualBrush.Visual>
+                                                    </VisualBrush>
+                                                </Style.Resources>
+                                                <Style.Triggers>
+                                                    <Trigger Property="Text" Value="{x:Null}">
+                                                        <Setter Property="Background" Value="{StaticResource HintBrush}"/>
+                                                    </Trigger>
+                                                    <Trigger Property="Text" Value="">
+                                                        <Setter Property="Background" Value="{StaticResource HintBrush}"/>
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBox.Style>
+                                    </TextBox>
+                                </Grid>
                             </Border>
-                            <ListBox Margin="8,6,8,8" ItemsSource="{Binding ProfilesViewModel.Profiles}">
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <Grid Margin="8,10">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
-                                            <Border Grid.Column="0" Background="{StaticResource AccentLow}"
-                                                    CornerRadius="8" Width="34" Height="34" Margin="0,0,12,0">
-                                                <TextBlock Text="&#xE81E;" FontFamily="Segoe MDL2 Assets"
-                                                           Foreground="{StaticResource Accent}" FontSize="15"
-                                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                            </Border>
-                                            <TextBlock Grid.Column="1" Text="{Binding Name}"
-                                                       Foreground="{StaticResource TextHi}"
-                                                       FontSize="14" FontWeight="SemiBold"
-                                                       VerticalAlignment="Center"/>
-                                            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                                                <Button Content="Activate" Style="{StaticResource BtnPrimary}"
-                                                        Command="{Binding DataContext.ProfilesViewModel.ActivateCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                                                        CommandParameter="{Binding}" Width="72" Margin="0,0,6,0"/>
-                                                <Button Content="Edit" Style="{StaticResource BtnGhost}"
-                                                        Command="{Binding DataContext.ProfilesViewModel.EditCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                                                        CommandParameter="{Binding}" Width="50" Margin="0,0,6,0"/>
-                                                <Button Content="Delete" Style="{StaticResource BtnDanger}"
-                                                        Command="{Binding DataContext.ProfilesViewModel.DeleteCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                                                        CommandParameter="{Binding}" Width="58"/>
-                                            </StackPanel>
-                                        </Grid>
+
+                            <Button Grid.Column="1" Padding="20,0" Height="40"
+                                    Style="{StaticResource BtnPrimary}" Command="{Binding ProfilesViewModel.NewCommand}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE710;" FontFamily="Segoe MDL2 Assets" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="New Profile" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                </StackPanel>
+                        </Button>
+                    </Grid>
+
+                    <!-- LIST CONTENT -->
+                    <Grid Grid.Row="1">
+                            <!-- EMPTY STATE -->
+                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0,80"
+                                        Visibility="{Binding ProfilesViewModel.IsEmpty, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <Border Background="#08FFFFFF" Width="64" Height="64" CornerRadius="32" Margin="0,0,0,16">
+                                    <TextBlock Text="&#xE773;" FontFamily="Segoe MDL2 Assets" Foreground="{StaticResource TextLow}" 
+                                               FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="No profiles found" Foreground="{StaticResource TextHi}" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                <TextBlock Text="Create a new profile or clear your search" Foreground="{StaticResource TextLow}" FontSize="13" Margin="0,4,0,0" HorizontalAlignment="Center"/>
+                            </StackPanel>
+
+                        <Grid Visibility="{Binding ProfilesViewModel.IsEmpty, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
+                            <!-- ItemsControl removes the default blue selection entirely -->
+                            <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,12,12,12">
+                                <ItemsControl ItemsSource="{Binding ProfilesViewModel.FilteredProfiles}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border x:Name="ProfileCard" CornerRadius="12" Margin="0,0,0,10" BorderThickness="1" 
+                                                    Padding="20,16" Cursor="Hand" HorizontalAlignment="Stretch">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="Background" Value="#0AFFFFFF"/>
+                                                        <Setter Property="BorderBrush" Value="#0FFFFFFF"/>
+                                                        <Style.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter Property="Background" Value="#10FFFFFF"/>
+                                                                <Setter Property="BorderBrush" Value="#33FFFFFF"/>
+                                                            </Trigger>
+                                                            <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                                                <Setter Property="Background" Value="#150078FF"/>
+                                                                <Setter Property="BorderBrush" Value="{StaticResource Accent}"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+                                                
+                                                <Grid>
+                                                    <!-- Full area clickable -->
+                                                    <Grid.InputBindings>
+                                                        <MouseBinding MouseAction="LeftClick" 
+                                                                    Command="{Binding DataContext.ProfilesViewModel.ActivateCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                    CommandParameter="{Binding}"/>
+                                                    </Grid.InputBindings>
+
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <StackPanel VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding Name}" Foreground="{StaticResource TextHi}" FontSize="15" FontWeight="SemiBold"/>
+                                                        
+                                                        <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                                            <!-- SELECTED Label -->
+                                                            <Border Background="{StaticResource Accent}" CornerRadius="2" Padding="6,2" Margin="0,0,8,0"
+                                                                    Visibility="{Binding IsActive, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                                <TextBlock Text="ACTIVE" Foreground="White" FontSize="9" FontWeight="Black" VerticalAlignment="Center"/>
+                                                            </Border>
+                                                            
+                                                            <!-- Subtitle details -->
+                                                            <TextBlock Text="Custom Audio Profile" Foreground="{StaticResource TextLow}" FontSize="11" VerticalAlignment="Center"/>
+                                                        </StackPanel>
+                                                    </StackPanel>
+
+                                                    <!-- Actions -->
+                                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                                        <Button Style="{StaticResource BtnGhost}" Width="38" Height="38" Padding="0" Margin="0,0,8,0"
+                                                                Command="{Binding DataContext.ProfilesViewModel.EditCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                CommandParameter="{Binding}" ToolTip="Edit Profile">
+                                                            <TextBlock Text="&#xE70F;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{StaticResource TextMid}"/>
+                                                        </Button>
+                                                        <Button Style="{StaticResource BtnGhost}" Width="38" Height="38" Padding="0" 
+                                                                Command="{Binding DataContext.ProfilesViewModel.DeleteCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                CommandParameter="{Binding}" ToolTip="Delete Profile">
+                                                            <TextBlock Text="&#xE74D;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="#EE5D5D"/>
+                                                        </Button>
+                                                    </StackPanel>
+                                            </Grid>
+                                        </Border>
                                     </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
-                        </DockPanel>
-                    </Border>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Grid>
+                            </Grid>
+                    <!-- MODAL OVERLAY: CONFIGURATION EDITOR -->
+                    <Grid Visibility="{Binding ProfilesViewModel.IsEditorVisible, Converter={StaticResource BooleanToVisibilityConverter}}"
+                          Margin="-24"> <!-- Negative margin to cover the whole tab area -->
+                        <Border Background="#CC0F0F11"/> <!-- Dimmed Background -->
+                        
+                        <Border VerticalAlignment="Center" HorizontalAlignment="Center" Width="520"
+                                Background="{StaticResource BgCard}" BorderBrush="{StaticResource Border}"
+                                BorderThickness="1" CornerRadius="16" Padding="0">
+                            <Border.Effect>
+                                <DropShadowEffect BlurRadius="40" ShadowDepth="0" Color="Black" Opacity="0.6"/>
+                            </Border.Effect>
+                            
+                            <DockPanel>
+                                <!-- Modal Header -->
+                                <Border DockPanel.Dock="Top" Background="#0CFFFFFF" Padding="24,16" CornerRadius="16,16,0,0" BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1">
+                                    <Grid>
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock Text="Edit Profile" Visibility="{Binding ProfilesViewModel.IsEditing, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                     Foreground="{StaticResource TextHi}" FontSize="18" FontWeight="Bold"/>
+                                            <TextBlock Text="New Profile" Visibility="{Binding ProfilesViewModel.IsEditing, Converter={StaticResource InverseBooleanToVisibilityConverter}}"
+                                                     Foreground="{StaticResource TextHi}" FontSize="18" FontWeight="Bold"/>
+                                            <TextBlock Text="Configure your audio preset" Foreground="{StaticResource TextLow}" FontSize="11" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                        
+                                        <Button HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                Style="{StaticResource BtnGhost}" Width="32" Height="32" Padding="0"
+                                                Command="{Binding ProfilesViewModel.CancelEditCommand}">
+                                            <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="12"/>
+                                        </Button>
+                                    </Grid>
+                                </Border>
+
+                                <Border Padding="32,24">
+                                    <StackPanel>
+                                    <TextBlock Text="PROFILE NAME" Style="{StaticResource Label}" Margin="0,0,0,8"/>
+                                    <TextBox Text="{Binding ProfilesViewModel.ProfileName, UpdateSourceTrigger=PropertyChanged}"
+                                             Height="40" VerticalContentAlignment="Center" Margin="0,0,0,24"
+                                             Padding="12,0" Background="#10FFFFFF" BorderBrush="{StaticResource Border}"
+                                             BorderThickness="1" Foreground="{StaticResource TextHi}"/>
+
+
+                                <!-- Device Grid (2x1 vertical boxes for modal) -->
+                                <UniformGrid Columns="2" Rows="2">
+                                    <!-- PRIMARY INPUT -->
+                                    <StackPanel Margin="0,0,10,20">
+                                        <TextBlock Text="PRIMARY INPUT" Style="{StaticResource Label}" Margin="0,0,0,8"/>
+                                        <ComboBox ItemsSource="{Binding ProfilesViewModel.InputDevices}" SelectedItem="{Binding ProfilesViewModel.SelectedInputDevice}">
+                                            <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding FullName}"/></DataTemplate></ComboBox.ItemTemplate>
+                                        </ComboBox>
+                                    </StackPanel>
+
+                                    <!-- PRIMARY OUTPUT -->
+                                    <StackPanel Margin="10,0,0,20">
+                                        <TextBlock Text="PRIMARY OUTPUT" Style="{StaticResource Label}" Margin="0,0,0,8"/>
+                                        <ComboBox ItemsSource="{Binding ProfilesViewModel.OutputDevices}" SelectedItem="{Binding ProfilesViewModel.SelectedOutputDevice}">
+                                            <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding FullName}"/></DataTemplate></ComboBox.ItemTemplate>
+                                        </ComboBox>
+                                    </StackPanel>
+
+                                    <!-- COMM INPUT -->
+                                    <StackPanel Margin="0,0,10,0">
+                                        <TextBlock Text="COMMUNICATION INPUT" Style="{StaticResource Label}" Margin="0,0,0,8"/>
+                                        <ComboBox ItemsSource="{Binding ProfilesViewModel.InputDevices}" SelectedItem="{Binding ProfilesViewModel.SelectedCallInputDevice}">
+                                            <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding FullName}"/></DataTemplate></ComboBox.ItemTemplate>
+                                        </ComboBox>
+                                    </StackPanel>
+
+                                    <!-- COMM OUTPUT -->
+                                    <StackPanel Margin="10,0,0,0">
+                                        <TextBlock Text="COMMUNICATION OUTPUT" Style="{StaticResource Label}" Margin="0,0,0,8"/>
+                                        <ComboBox ItemsSource="{Binding ProfilesViewModel.OutputDevices}" SelectedItem="{Binding ProfilesViewModel.SelectedCallOutputDevice}">
+                                            <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding FullName}"/></DataTemplate></ComboBox.ItemTemplate>
+                                        </ComboBox>
+                                    </StackPanel>
+                                </UniformGrid>
+
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,32,0,0">
+                                    <Button Content="Cancel" Style="{StaticResource BtnGhost}" Width="100" Height="36" Margin="0,0,12,0"
+                                            Command="{Binding ProfilesViewModel.CancelEditCommand}"/>
+                                    <Button Content="{Binding ProfilesViewModel.SaveButtonText}" Style="{StaticResource BtnPrimary}"
+                                            Width="120" Height="36" Command="{Binding ProfilesViewModel.SaveCommand}"/>
+                                </StackPanel>
+                                    </StackPanel>
+                                </Border>
+                            </DockPanel>
+                        </Border>
+                    </Grid>
                 </Grid>
             </TabItem>
+
 
             <!-- ──────────────────────── SHORTCUTS TAB -->
             <TabItem Header="Shortcuts">

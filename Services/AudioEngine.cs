@@ -13,7 +13,7 @@ namespace EchoX.Services
     {
         private readonly Lazy<CoreAudioController> _controller =
             new Lazy<CoreAudioController>(() => new CoreAudioController());
-        private readonly SoundPlayer? _testTonePlayer = null;
+        private SoundPlayer? _testTonePlayer;
         private DateTime _lastPlayTime = DateTime.MinValue;
 
         private WasapiCapture? _micCapture;
@@ -51,7 +51,7 @@ namespace EchoX.Services
             if (device != null)
             {
                 device.SetAsDefault();
-                device.SetAsDefaultCommunications();
+                // device.SetAsDefaultCommunications(); // Removed to decouple from communication settings
             }
         }
 
@@ -163,7 +163,8 @@ namespace EchoX.Services
                 _micOut.Init(_micWaveProvider);
                 
                 _micCapture.StartRecording();
-                _micOut.Play();
+                // User requested to remove playback feedback (pf sound) from mic test
+                // _micOut.Play(); 
             }
             catch (Exception ex)
             {

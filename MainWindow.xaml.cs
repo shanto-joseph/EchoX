@@ -116,7 +116,7 @@ namespace EchoX
                     dc.DrawGeometry(brush, null, geometry);
                 }
 
-                var renderTarget = new RenderTargetBitmap(32, 32, 96, 96, PixelFormats.Pbgra32);
+                var renderTarget = new System.Windows.Media.Imaging.RenderTargetBitmap(32, 32, 96, 96, System.Windows.Media.PixelFormats.Pbgra32);
                 renderTarget.Render(visual);
 
                 // Convert RenderTargetBitmap to System.Drawing.Icon

@@ -61,6 +61,7 @@ namespace EchoX.ViewModels
 
         public ObservableCollection<AudioDevice> InputDevices  { get; } = new ObservableCollection<AudioDevice>();
         public ObservableCollection<AudioDevice> OutputDevices { get; } = new ObservableCollection<AudioDevice>();
+        public ObservableCollection<AudioDevice> AllDevices    { get; } = new ObservableCollection<AudioDevice>();
 
         private AudioDevice? _currentInputDevice;
         public AudioDevice? CurrentInputDevice
@@ -209,22 +210,20 @@ namespace EchoX.ViewModels
 
                 if (CurrentInputDevice != null)
                 {
-                    // Standard peak meter visuals
-                    // Only reaches 100% (full) when receiving a very loud input signal
-                    double level = _currentPeak * 100;
+                    // Non-linear scaling: square the peak (0.0 to 1.0) to reduce sensitivity to low-level noise
+                    // This ensures the meter only "fills" when catching loud noises
+                    double level = Math.Pow(_currentPeak, 2) * 100;
                     if (level > 100) level = 100;
                     CurrentInputDevice.Peak = level;
                 }
             };
             _micTestTimer.Start();
 
-            _micPeakWatcher = _audioEngine.WatchPeak(CurrentInputDevice.Id, peak =>
-            {
-                _targetPeak = peak;
-            });
-
-            _audioEngine.StartMicMonitor(CurrentInputDevice.Id);
-        }
+                _micPeakWatcher = _audioEngine.WatchPeak(CurrentInputDevice.Id, peak =>
+                {
+                    _targetPeak = peak;
+                });
+            }
 
         private void StopMicTest()
         {
@@ -261,6 +260,10 @@ namespace EchoX.ViewModels
                     UpdateCollection(InputDevices, mics);
                     UpdateCollection(OutputDevices, speakers);
 
+                    // Combine for AllDevices
+                    var combined = mics.Concat(speakers).ToList();
+                    UpdateCollection(AllDevices, combined);
+
                     _currentInputDevice = defaultMic != null
                         ? InputDevices.FirstOrDefault(d => d.Id == defaultMic.Id.ToString()) ?? InputDevices.FirstOrDefault()
                         : InputDevices.FirstOrDefault();
@@ -268,6 +271,10 @@ namespace EchoX.ViewModels
                     _currentOutputDevice = defaultSpeaker != null
                         ? OutputDevices.FirstOrDefault(d => d.Id == defaultSpeaker.Id.ToString()) ?? OutputDevices.FirstOrDefault()
                         : OutputDevices.FirstOrDefault();
+
+                    // Clear existing call device markers before setting new ones
+                    foreach (var d in InputDevices) d.IsCallDevice = false;
+                    foreach (var d in OutputDevices) d.IsCallDevice = false;
 
                     _currentCallInputDevice = callMic != null
                         ? InputDevices.FirstOrDefault(d => d.Id == callMic.Id.ToString()) ?? InputDevices.FirstOrDefault()
@@ -310,9 +317,29 @@ namespace EchoX.ViewModels
 
         private void UpdateCollection(ObservableCollection<AudioDevice> collection, List<AudioDevice> newList)
         {
-            // Simple replacement for now, could be smarter diff
-            collection.Clear();
-            foreach (var item in newList) collection.Add(item);
+            var oldList = collection.ToList();
+            var newIds = newList.Select(d => d.Id).ToList();
+
+            // Remove gone
+            foreach (var old in oldList)
+                if (!newIds.Contains(old.Id)) collection.Remove(old);
+
+            // Add new or update existing
+            foreach (var updated in newList)
+            {
+                var existing = collection.FirstOrDefault(d => d.Id == updated.Id);
+                if (existing == null)
+                {
+                    collection.Add(updated);
+                }
+                else
+                {
+                    // Minimal updates to existing objects
+                    existing.Name = updated.Name;
+                    existing.IsDefault = updated.IsDefault;
+                    // Note: Volume and Peak are handled by watchers
+                }
+            }
         }
 
         private void SetupWatchers()
@@ -334,26 +361,40 @@ namespace EchoX.ViewModels
 
         private void SetCallInput(AudioDevice device)
         {
-            _audioEngine.SetAsCallDevice(device.Id);
-            if (_currentCallInputDevice != null) _currentCallInputDevice.IsCallDevice = false;
-            device.IsCallDevice = true;
-            _currentCallInputDevice = device;
+            System.Threading.Tasks.Task.Run(() => {
+                _audioEngine.SetAsCallDevice(device.Id);
+                System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() => {
+                    foreach(var d in InputDevices) d.IsCallDevice = (d.Id == device.Id);
+                    _currentCallInputDevice = device;
+                }));
+            });
         }
 
         private void SetCallOutput(AudioDevice device)
         {
-            _audioEngine.SetAsCallDevice(device.Id);
-            if (_currentCallOutputDevice != null) _currentCallOutputDevice.IsCallDevice = false;
-            device.IsCallDevice = true;
-            _currentCallOutputDevice = device;
+            System.Threading.Tasks.Task.Run(() => {
+                _audioEngine.SetAsCallDevice(device.Id);
+                System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() => {
+                    foreach (var d in OutputDevices) d.IsCallDevice = (d.Id == device.Id);
+                    _currentCallOutputDevice = device;
+                }));
+            });
         }
 
         private void RefreshActiveProfile()
         {
             var profiles = _storageService.LoadProfiles();
-            var match = profiles.FirstOrDefault(p =>
-                p.InputDeviceId  == _currentInputDevice?.Id &&
-                p.OutputDeviceId == _currentOutputDevice?.Id);
+            var activeId = _storageService.LoadActiveProfileId();
+            
+            var match = profiles.FirstOrDefault(p => p.Id == activeId);
+            if (match == null)
+            {
+                // Fallback attempt by device matching
+                match = profiles.FirstOrDefault(p =>
+                    p.InputDeviceId  == _currentInputDevice?.Id &&
+                    p.OutputDeviceId == _currentOutputDevice?.Id);
+            }
+            
             ActiveProfileName = match?.Name;
         }
 
