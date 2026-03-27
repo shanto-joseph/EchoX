@@ -16,9 +16,10 @@ namespace EchoX.Services
         private SoundPlayer? _testTonePlayer;
         private DateTime _lastPlayTime = DateTime.MinValue;
 
-        private WasapiCapture? _micCapture;
-        private WasapiOut? _micOut;
+        private IWaveIn? _micCapture;
+        private IWavePlayer? _micOut;
         private BufferedWaveProvider? _micWaveProvider;
+        public event Action<double>? MicTestPeakUpdated;
 
         public AudioEngine()
         {
@@ -141,48 +142,162 @@ namespace EchoX.Services
 
         public bool IsDefaultMicMuted => _controller.Value.DefaultCaptureDevice?.IsMuted ?? false;
 
-        public void StartMicMonitor(string deviceId)
+        public void StartMicTest(string deviceId, bool loopback)
         {
             try
             {
-                StopMicMonitor();
+                StopMicTest();
+
+                // 1. Identify hardware by name matching
+                int deviceIndex = -1;
+                string deviceName = "";
+                if (!string.IsNullOrEmpty(deviceId) && Guid.TryParse(deviceId, out var guid))
+                {
+                   var dev = _controller.Value.GetDevice(guid);
+                   if (dev != null) deviceName = dev.Name;
+                }
+
+                for (int i = 0; i < WaveIn.DeviceCount; i++)
+                {
+                    var caps = WaveIn.GetCapabilities(i);
+                    // Match by first 15 chars to account for NAudio's truncation (31 char limit)
+                    string searchName = caps.ProductName.Trim();
+                    
+                    // Discord and Windows often append " (Microphone)" or similar, so check if names overlap significantly
+                    if (!string.IsNullOrEmpty(deviceName) && 
+                        (deviceName.Contains(searchName) || searchName.Contains(deviceName.Substring(0, Math.Min(deviceName.Length, 15)))))
+                    {
+                        deviceIndex = i;
+                        break;
+                    }
+                }
                 
-                var enumerator = new MMDeviceEnumerator();
-                var mic = enumerator.GetDevice(deviceId);
-                
-                _micCapture = new WasapiCapture(mic, true, 20); // 20ms latency
+                if (deviceIndex == -1) deviceIndex = 0; // Fallback to first
+
+                // 2. Initialize Standard WaveIn
+                _micCapture = new WaveInEvent
+                {
+                    DeviceNumber = deviceIndex,
+                    WaveFormat = new WaveFormat(44100, 16, 1), // Safe 16-bit Mono format
+                    BufferMilliseconds = 50 // Low latency capture
+                };
+
+                // 3. Initialize Provider
                 _micWaveProvider = new BufferedWaveProvider(_micCapture.WaveFormat)
                 {
                     DiscardOnBufferOverflow = true
                 };
 
-                _micCapture.DataAvailable += (s, e) =>
-                    _micWaveProvider.AddSamples(e.Buffer, 0, e.BytesRecorded);
+                // 4. Initialize Playback
+                if (loopback) 
+                {
+                    var waveOut = new WaveOutEvent { DesiredLatency = 50 }; // Lowered from 100 to 50 for better responsiveness
+                    waveOut.Init(_micWaveProvider);
+                    waveOut.Play();
+                    _micOut = waveOut;
+                }
 
-                _micOut = new WasapiOut(AudioClientShareMode.Shared, 20);
-                _micOut.Init(_micWaveProvider);
-                
+                // 5. Data Handler
+                _micCapture.DataAvailable += (s, e) =>
+                {
+                    if (_micWaveProvider != null)
+                    {
+                        if (loopback) _micWaveProvider.AddSamples(e.Buffer, 0, e.BytesRecorded);
+                        
+                        double peak = CalculatePeak(e.Buffer, e.BytesRecorded);
+                        MicTestPeakUpdated?.Invoke(peak);
+                    }
+                };
+
                 _micCapture.StartRecording();
-                // User requested to remove playback feedback (pf sound) from mic test
-                // _micOut.Play(); 
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Mic Monitor Failed: {ex.Message}");
+                System.Diagnostics.Trace.WriteLine($"Mic Test Fail: {ex.Message}");
             }
         }
 
-        public void StopMicMonitor()
+        public void StopMicTest()
         {
-            _micCapture?.StopRecording();
-            _micCapture?.Dispose();
-            _micCapture = null;
+            try
+            {
+                if (_micOut != null)
+                {
+                    _micOut.Stop();
+                    _micOut.Dispose();
+                    _micOut = null;
+                }
+                if (_micCapture != null)
+                {
+                    _micCapture.StopRecording();
+                    _micCapture.Dispose();
+                    _micCapture = null;
+                }
+                _micWaveProvider = null;
+            }
+            catch { }
+        }
 
-            _micOut?.Stop();
-            _micOut?.Dispose();
-            _micOut = null;
+        private double CalculatePeak(byte[] buffer, int length)
+        {
+            if (_micCapture == null) return 0;
             
-            _micWaveProvider = null;
+            float max = 0;
+            var format = _micCapture.WaveFormat;
+
+            try 
+            {
+                // High-performance direct buffer reading based on bit-depth
+                if (format.BitsPerSample == 32)
+                {
+                    // Most 32-bit devices map to IEEE Float (even in Extensible format)
+                    for (int i = 0; i < length; i += 4)
+                    {
+                        if (i + 4 <= length)
+                        {
+                            float sample = BitConverter.ToSingle(buffer, i);
+                            float abs = Math.Abs(sample);
+                            if (abs > max) max = abs;
+                        }
+                    }
+                }
+                else if (format.BitsPerSample == 16)
+                {
+                    // Standard PCM
+                    for (int i = 0; i < length; i += 2)
+                    {
+                        if (i + 2 <= length)
+                        {
+                            short sample = BitConverter.ToInt16(buffer, i);
+                            float sample32 = sample / 32768f;
+                            float abs = Math.Abs(sample32);
+                            if (abs > max) max = abs;
+                        }
+                    }
+                }
+                else if (format.BitsPerSample == 24)
+                {
+                    // 24-bit PCM (3 bytes per sample)
+                    for (int i = 0; i < length; i += 3)
+                    {
+                        if (i + 3 <= length)
+                        {
+                            int sample = (buffer[i+2] << 16) | (buffer[i+1] << 8) | buffer[i];
+                            // Handle signed 24-bit
+                            if ((sample & 0x800000) != 0) sample |= unchecked((int)0xff000000);
+                            float sample32 = sample / 8388608f;
+                            float abs = Math.Abs(sample32);
+                            if (abs > max) max = abs;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Console.WriteLine($"Error in CalculatePeak: {ex.Message}");
+            }
+            
+            return Math.Min(1.0, (double)max);
         }
 
         public void PlayTestTone(string deviceId)

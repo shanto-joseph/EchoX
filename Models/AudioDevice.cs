@@ -7,9 +7,27 @@ namespace EchoX.Models
     public class AudioDevice : INotifyPropertyChanged
     {
         public string Id { get; set; } = string.Empty;
-        public string Name { get; set; } = string.Empty;
-        public string FullName { get; set; } = string.Empty;
-        public bool IsDefault { get; set; }
+        
+        private string _name = string.Empty;
+        public string Name 
+        { 
+            get => _name; 
+            set { _name = value; OnPropertyChanged(); } 
+        }
+
+        private string _fullName = string.Empty;
+        public string FullName 
+        { 
+            get => _fullName; 
+            set { _fullName = value; OnPropertyChanged(); } 
+        }
+
+        private bool _isDefault;
+        public bool IsDefault 
+        { 
+            get => _isDefault; 
+            set { _isDefault = value; OnPropertyChanged(); } 
+        }
 
         private bool _isCallDevice;
         public bool IsCallDevice
@@ -25,13 +43,6 @@ namespace EchoX.Models
             set { _isMuted = value; OnPropertyChanged(); }
         }
         
-        private double _peak;
-        public double Peak
-        {
-            get => _peak;
-            set { _peak = value; OnPropertyChanged(); }
-        }
-
         public AudioDevice(CoreAudioDevice device)
         {
             Id = device.Id.ToString();

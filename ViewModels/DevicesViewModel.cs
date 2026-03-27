@@ -18,10 +18,9 @@ namespace EchoX.ViewModels
         private IDisposable? _inputVolumeWatcher;
         private IDisposable? _outputVolumeWatcher;
         private IDisposable? _deviceWatcher;
-        private IDisposable? _micPeakWatcher;
-        private System.Windows.Threading.DispatcherTimer? _micTestTimer;
         private double _targetPeak;
         private double _currentPeak;
+        private System.Windows.Threading.DispatcherTimer? _smoothingTimer;
 
         public DevicesViewModel(MainWindowViewModel mainWindowViewModel, AudioEngine audioEngine, StorageService storageService)
         {
@@ -81,7 +80,7 @@ namespace EchoX.ViewModels
                             UpdateVolumeAndWatchers(value, true);
                             UpdateDeviceMuteStates(); // Sync labels
                             RefreshActiveProfile();
-                            if (IsMicTesting) StartMicTest();
+                            if (IsMicTesting) UpdateMicTest();
                         }));
                     });
                 }
@@ -172,67 +171,64 @@ namespace EchoX.ViewModels
         public bool IsMicTesting
         {
             get => _isMicTesting;
-            set
+            set { if (SetProperty(ref _isMicTesting, value)) UpdateMicTest(); }
+        }
+
+        private bool _isMicLoopback = true; // Hear yourself by default
+        public bool IsMicLoopback
+        {
+            get => _isMicLoopback;
+            set { if (SetProperty(ref _isMicLoopback, value)) { if (IsMicTesting) UpdateMicTest(); } }
+        }
+
+        private double _micTestLevel;
+        public double MicTestLevel
+        {
+            get => _micTestLevel;
+            set => SetProperty(ref _micTestLevel, value);
+        }
+
+        private void UpdateMicTest()
+        {
+            if (IsMicTesting && CurrentInputDevice != null)
             {
-                if (SetProperty(ref _isMicTesting, value))
+                _audioEngine.MicTestPeakUpdated -= OnMicTestPeakUpdated;
+                _audioEngine.MicTestPeakUpdated += OnMicTestPeakUpdated;
+                _audioEngine.StartMicTest(CurrentInputDevice.Id, IsMicLoopback);
+                
+                // Initialize smoothing timer for "analog-like" meter
+                _smoothingTimer?.Stop();
+                _smoothingTimer = new System.Windows.Threading.DispatcherTimer(System.Windows.Threading.DispatcherPriority.Render)
                 {
-                    if (value) StartMicTest();
-                    else StopMicTest();
-                }
+                    Interval = TimeSpan.FromMilliseconds(16) // ~60fps
+                };
+                _smoothingTimer.Tick += (s, e) =>
+                {
+                    // Smoothly interpolate towards target
+                    if (_targetPeak > _currentPeak)
+                        _currentPeak = (_currentPeak * 0.4) + (_targetPeak * 0.6); // Fast rise
+                    else
+                        _currentPeak = (_currentPeak * 0.85); // Natural decay
+
+                    // Use a non-linear scale (Power 0.7) to make the meter feel more alive at lower volumes
+                    MicTestLevel = Math.Min(100, Math.Pow(_currentPeak, 0.7) * 100.0);
+                };
+                _smoothingTimer.Start();
+            }
+            else
+            {
+                _smoothingTimer?.Stop();
+                _audioEngine.MicTestPeakUpdated -= OnMicTestPeakUpdated;
+                _audioEngine.StopMicTest();
+                MicTestLevel = 0;
+                _targetPeak = 0;
+                _currentPeak = 0;
             }
         }
 
-        private void StartMicTest()
+        private void OnMicTestPeakUpdated(double peak)
         {
-            if (CurrentInputDevice == null) return;
-
-            _micPeakWatcher?.Dispose();
-            
-            // Re-zero
-            _targetPeak = 0;
-            _currentPeak = 0;
-
-            // Use high-priority timer for smooth "analog-like" meter movement
-            _micTestTimer?.Stop();
-            _micTestTimer = new System.Windows.Threading.DispatcherTimer(System.Windows.Threading.DispatcherPriority.Render)
-            {
-                Interval = TimeSpan.FromMilliseconds(20) // 50 FPS
-            };
-            _micTestTimer.Tick += (s, e) =>
-            {
-                // Smoothly interpolate towards target but decay quickly
-                if (_targetPeak > _currentPeak)
-                    _currentPeak = (_currentPeak * 0.4) + (_targetPeak * 0.6); // Fast rise
-                else
-                    _currentPeak = (_currentPeak * 0.9) - 0.01; // Slow, natural decay
-
-                if (_currentPeak < 0) _currentPeak = 0;
-
-                if (CurrentInputDevice != null)
-                {
-                    // Non-linear scaling: square the peak (0.0 to 1.0) to reduce sensitivity to low-level noise
-                    // This ensures the meter only "fills" when catching loud noises
-                    double level = Math.Pow(_currentPeak, 2) * 100;
-                    if (level > 100) level = 100;
-                    CurrentInputDevice.Peak = level;
-                }
-            };
-            _micTestTimer.Start();
-
-                _micPeakWatcher = _audioEngine.WatchPeak(CurrentInputDevice.Id, peak =>
-                {
-                    _targetPeak = peak;
-                });
-            }
-
-        private void StopMicTest()
-        {
-            _micTestTimer?.Stop();
-            _audioEngine.StopMicMonitor();
-            _micPeakWatcher?.Dispose();
-            _micPeakWatcher = null;
-            if (CurrentInputDevice != null)
-                CurrentInputDevice.Peak = 0;
+            _targetPeak = peak;
         }
 
         private void LoadDevices()

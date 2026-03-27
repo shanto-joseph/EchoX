@@ -8,6 +8,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationIcon>Assets\LOGO\EchoX_exe.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -21,7 +22,10 @@
     <Content Include="Assets\audio.wav">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="Assets\LOGO\EchoX.png">
+    <Content Include="Assets\LOGO\EchoX.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\LOGO\EchoX_exe.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
