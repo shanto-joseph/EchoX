@@ -11,6 +11,8 @@ namespace EchoX.Services
         private readonly string _folderPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EchoX");
         private readonly string _filePath;
         private readonly string _cachePath;
+        private List<AudioProfile>? _profilesCache;
+        private DeviceCache? _deviceCache;
 
         public StorageService()
         {
@@ -25,21 +27,25 @@ namespace EchoX.Services
 
         public void SaveProfiles(List<AudioProfile> profiles)
         {
+            _profilesCache = profiles;
             string json = JsonConvert.SerializeObject(profiles, Formatting.Indented);
             File.WriteAllText(_filePath, json);
         }
 
         public List<AudioProfile> LoadProfiles()
         {
+            if (_profilesCache != null) return _profilesCache;
             if (!File.Exists(_filePath)) return new List<AudioProfile>(); 
             try {
                 string json = File.ReadAllText(_filePath);
-                return JsonConvert.DeserializeObject<List<AudioProfile>>(json) ?? new List<AudioProfile>();
+                _profilesCache = JsonConvert.DeserializeObject<List<AudioProfile>>(json) ?? new List<AudioProfile>();
+                return _profilesCache;
             } catch { return new List<AudioProfile>(); }
         }
 
         public void SaveDeviceCache(DeviceCache cache)
         {
+            _deviceCache = cache;
             try {
                 string json = JsonConvert.SerializeObject(cache, Formatting.Indented);
                 File.WriteAllText(_cachePath, json);
@@ -48,10 +54,12 @@ namespace EchoX.Services
 
         public DeviceCache LoadDeviceCache()
         {
+            if (_deviceCache != null) return _deviceCache;
             if (!File.Exists(_cachePath)) return new DeviceCache();
             try {
                 string json = File.ReadAllText(_cachePath);
-                return JsonConvert.DeserializeObject<DeviceCache>(json) ?? new DeviceCache();
+                _deviceCache = JsonConvert.DeserializeObject<DeviceCache>(json) ?? new DeviceCache();
+                return _deviceCache;
             } catch { return new DeviceCache(); }
         }
     }

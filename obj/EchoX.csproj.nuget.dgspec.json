@@ -54,6 +54,10 @@
               "version": "[1.0.3, )",
               "autoReferenced": true
             },
+            "NAudio": {
+              "target": "Package",
+              "version": "[2.3.0, )"
+            },
             "NHotkey.Wpf": {
               "target": "Package",
               "version": "[4.0.0, )"

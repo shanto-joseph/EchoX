@@ -7,7 +7,7 @@ namespace EchoX.ViewModels
 {
     public class MainWindowViewModel : ViewModelBase
     {
-        private readonly AudioEngine _audioEngine;
+        public AudioEngine AudioEngine { get; }
         private readonly StorageService _storageService;
 
         // Commands for window actions
@@ -17,6 +17,7 @@ namespace EchoX.ViewModels
 
         // Event for showing tray notifications
         public event Action<string, string>? ShowTrayNotification;
+        public event Action<bool>? MicrophoneMuteChanged;
 
         // Tab ViewModels
         public ProfilesViewModel ProfilesViewModel { get; }
@@ -27,12 +28,12 @@ namespace EchoX.ViewModels
         public MainWindowViewModel()
         {
             // Create shared services once
-            _audioEngine = new AudioEngine();
+            AudioEngine = new AudioEngine();
             _storageService = new StorageService();
 
             // Pass shared services to child ViewModels
-            ProfilesViewModel = new ProfilesViewModel(this, _audioEngine, _storageService);
-            DevicesViewModel = new DevicesViewModel(_audioEngine, _storageService);
+            ProfilesViewModel = new ProfilesViewModel(this, AudioEngine, _storageService);
+            DevicesViewModel = new DevicesViewModel(this, AudioEngine, _storageService);
             SettingsViewModel = new SettingsViewModel();
             AboutViewModel = new AboutViewModel();
         }
@@ -40,6 +41,11 @@ namespace EchoX.ViewModels
         public void NotifyTray(string title, string message)
         {
             ShowTrayNotification?.Invoke(title, message);
+        }
+
+        public void OnMicrophoneMuteChanged(bool isMuted)
+        {
+            MicrophoneMuteChanged?.Invoke(isMuted);
         }
     }
 }

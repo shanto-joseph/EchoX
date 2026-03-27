@@ -18,12 +18,27 @@ namespace EchoX.Models
             set { _isCallDevice = value; OnPropertyChanged(); }
         }
 
+        private bool _isMuted;
+        public bool IsMuted
+        {
+            get => _isMuted;
+            set { _isMuted = value; OnPropertyChanged(); }
+        }
+        
+        private double _peak;
+        public double Peak
+        {
+            get => _peak;
+            set { _peak = value; OnPropertyChanged(); }
+        }
+
         public AudioDevice(CoreAudioDevice device)
         {
             Id = device.Id.ToString();
             Name = device.Name;
             FullName = device.FullName;
             IsDefault = device.IsDefaultDevice;
+            IsMuted = device.IsMuted;
         }
 
         public AudioDevice() { }
