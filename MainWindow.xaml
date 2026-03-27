@@ -39,6 +39,10 @@
         <SolidColorBrush x:Key="Amber"       Color="#FBBF24"/>
 
         <!-- Global Styles -->
+        <Style TargetType="Control">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        </Style>
+
         <Style TargetType="TextBlock">
             <Setter Property="Foreground" Value="{StaticResource TextHi}"/>
         </Style>
@@ -515,7 +519,7 @@
                             Style="{StaticResource NavBtnActive}">
                         <StackPanel Orientation="Horizontal">
                             <Viewbox Width="13" Height="13" Margin="0,0,10,0" VerticalAlignment="Center">
-                                <Path Data="M3.333333333333333 4.666666666666666h1.3333333333333333v6.666666666666666H3.333333333333333V4.666666666666666Zm-2.6666666666666665 2h1.3333333333333333v2.6666666666666665H0.6666666666666666v-2.6666666666666665Zm5.333333333333333 -5.333333333333333h1.3333333333333333v12H6V1.3333333333333333Zm2.6666666666666665 1.3333333333333333h1.3333333333333333v12h-1.3333333333333333V2.6666666666666665Zm2.6666666666666665 2h1.3333333333333333v6.666666666666666h-1.3333333333333333V4.666666666666666Zm2.6666666666666665 2h1.3333333333333333v2.6666666666666665h-1.3333333333333333v-2.6666666666666665Z" 
+                                <Path Data="M14 12v2h-1.3333333333333333v-2h-1.3333333333333333v-2h4v2h-1.3333333333333333ZM3.333333333333333 12v2H2v-2H0.6666666666666666v-2h4v2H3.333333333333333Zm4 -8V2h1.3333333333333333v2h1.3333333333333333v2H6V4h1.3333333333333333Zm0 3.333333333333333h1.3333333333333333v6.666666666666666h-1.3333333333333333V7.333333333333333Zm-5.333333333333333 1.3333333333333333V2h1.3333333333333333v6.666666666666666H2Zm10.666666666666666 0V2h1.3333333333333333v6.666666666666666h-1.3333333333333333Z" 
                                       Fill="{StaticResource Accent}"/>
                             </Viewbox>
                             <TextBlock Text="Devices" FontSize="13" Foreground="{StaticResource Accent}"/>
@@ -584,26 +588,43 @@
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="Devices" Foreground="{StaticResource TextHi}"
                                            FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                <!-- Profile name inline next to heading -->
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="10,0,0,0">
-                                    <StackPanel.Style>
-                                        <Style TargetType="StackPanel">
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding DevicesViewModel.ActiveProfileName}" Value="{x:Null}">
-                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </StackPanel.Style>
-                                    <TextBlock Text="|" Foreground="{StaticResource TextLow}"
-                                               FontSize="18" Margin="0,0,10,0" VerticalAlignment="Center"/>
-                                    <TextBlock Text="&#xE8F1;" FontFamily="Segoe MDL2 Assets"
-                                               Foreground="{StaticResource Accent}"
-                                               FontSize="12" Margin="0,0,5,0" VerticalAlignment="Center"/>
-                                    <TextBlock Text="{Binding DevicesViewModel.ActiveProfileName}"
-                                               Foreground="{StaticResource Accent}"
-                                               FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                </StackPanel>
+                                    <!-- Profile Button Link -->
+                                    <Button Cursor="Hand" Click="ProfileHeading_Click" BorderThickness="0" Background="Transparent" VerticalAlignment="Center" Margin="10,0,0,0">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <StackPanel x:Name="Container" Orientation="Horizontal">
+                                                    <StackPanel.Style>
+                                                        <Style TargetType="StackPanel">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding DevicesViewModel.ActiveProfileName}" Value="{x:Null}">
+                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding DevicesViewModel.ActiveProfileName}" Value="">
+                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </StackPanel.Style>
+                                                    <TextBlock Text="|" Foreground="{StaticResource TextLow}"
+                                                               FontSize="18" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                                                    <TextBlock x:Name="Ico" Text="&#xE8F1;" FontFamily="Segoe MDL2 Assets"
+                                                               Foreground="{StaticResource Accent}"
+                                                               FontSize="12" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                                    <TextBlock x:Name="Txt" Text="{Binding DevicesViewModel.ActiveProfileName}"
+                                                               Foreground="{StaticResource Accent}"
+                                                               FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Ico" Property="Foreground" Value="{StaticResource TextHi}"/>
+                                                        <Setter TargetName="Txt" Property="Foreground" Value="{StaticResource TextHi}"/>
+                                                        <Setter Property="ToolTip" Value="Go to Profiles"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
                             </StackPanel>
                             <TextBlock Text="Select a device to set it as the Windows default"
                                        Foreground="{StaticResource TextMid}" FontSize="12" Margin="0,3,0,0"/>
@@ -632,15 +653,62 @@
                                                        FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                         </StackPanel>
 
+                                        <!-- Test Toggle Button -->
+                                        <ToggleButton HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                      IsChecked="{Binding DevicesViewModel.IsMicTestExpanded}"
+                                                      Cursor="Hand" ToolTip="Test Mic">
+                                            <ToggleButton.Template>
+                                                <ControlTemplate TargetType="ToggleButton">
+                                                    <Border x:Name="Bg" Background="Transparent" CornerRadius="8" Padding="12,8">
+                                                        <Path x:Name="TxtIcon" Data="M3.333333333333333 4.666666666666666h1.3333333333333333v6.666666666666666H3.333333333333333V4.666666666666666Zm-2.6666666666666665 2h1.3333333333333333v2.6666666666666665H0.6666666666666666v-2.6666666666666665Zm5.333333333333333 -5.333333333333333h1.3333333333333333v12H6V1.3333333333333333Zm2.6666666666666665 1.3333333333333333h1.3333333333333333v12h-1.3333333333333333V2.6666666666666665Zm2.6666666666666665 2h1.3333333333333333v6.666666666666666h-1.3333333333333333V4.666666666666666Zm2.6666666666666665 2h1.3333333333333333v2.6666666666666665h-1.3333333333333333v-2.6666666666666665Z"
+                                                              Fill="{StaticResource TextMid}" Height="20" Width="20" Stretch="Uniform"
+                                                              VerticalAlignment="Center">
+                                                            <Path.RenderTransformOrigin>
+                                                                <Point X="0.5" Y="0.5"/>
+                                                            </Path.RenderTransformOrigin>
+                                                            <Path.RenderTransform>
+                                                                <ScaleTransform x:Name="HeaderScale" ScaleX="1" ScaleY="1"/>
+                                                            </Path.RenderTransform>
+                                                        </Path>
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="Bg" Property="Background" Value="#1E1E22"/>
+                                                            <Setter TargetName="TxtIcon" Property="Fill" Value="{StaticResource TextHi}"/>
+                                                            <Trigger.EnterActions>
+                                                                <BeginStoryboard x:Name="HoverPulse">
+                                                                    <Storyboard>
+                                                                        <DoubleAnimation Storyboard.TargetName="HeaderScale"
+                                                                                         Storyboard.TargetProperty="ScaleX"
+                                                                                         To="1.15" Duration="0:0:0.6" AutoReverse="True" RepeatBehavior="Forever"/>
+                                                                        <DoubleAnimation Storyboard.TargetName="HeaderScale"
+                                                                                         Storyboard.TargetProperty="ScaleY"
+                                                                                         To="1.15" Duration="0:0:0.6" AutoReverse="True" RepeatBehavior="Forever"/>
+                                                                    </Storyboard>
+                                                                </BeginStoryboard>
+                                                            </Trigger.EnterActions>
+                                                            <Trigger.ExitActions>
+                                                                <StopStoryboard BeginStoryboardName="HoverPulse"/>
+                                                            </Trigger.ExitActions>
+                                                        </Trigger>
+                                                        <Trigger Property="IsChecked" Value="True">
+                                                            <Setter TargetName="TxtIcon" Property="Fill" Value="{StaticResource Accent}"/>
+                                                        </Trigger>
+                                                        <DataTrigger Binding="{Binding DevicesViewModel.IsMicTesting}" Value="True">
+                                                            <Setter TargetName="TxtIcon" Property="Fill" Value="#DA373C"/>
+                                                        </DataTrigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </ToggleButton.Template>
+                                        </ToggleButton>
                                     </Grid>
                                 </Border>
                                 
-                                <!-- Mic Test Section (Discord Style) -->
-                                <Border DockPanel.Dock="Bottom" Background="#0F0F11" 
-                                        CornerRadius="0,0,8,8" Padding="14,12" BorderBrush="{StaticResource Border}" BorderThickness="0,1,0,0">
+                                <!-- Mic Test Section (Dropdown Style) -->
+                                <Border DockPanel.Dock="Top" Background="#0A0F0F11" Padding="16,16,16,20"
+                                        BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1"
+                                        Visibility="{Binding DevicesViewModel.IsMicTestExpanded, Converter={StaticResource BooleanToVisibilityConverter}}">
                                     <StackPanel>
-                                        <TextBlock Text="Mic Test" Foreground="White" 
-                                                   FontSize="16" FontWeight="Bold" Margin="0,0,0,16" FontFamily="Segoe UI, sans-serif"/>
                                         
                                         <Grid>
                                             <Grid.ColumnDefinitions>
@@ -650,26 +718,53 @@
                                             
                                             <!-- Test Button -->
                                             <Button Grid.Column="0" Command="{Binding DevicesViewModel.ToggleMicTestCommand}"
-                                                    Width="76" Height="36" Cursor="Hand" Margin="0,0,16,0">
+                                                    Width="76" Height="34" Cursor="Hand" Margin="0,0,16,0">
                                                 <Button.Style>
                                                     <Style TargetType="Button">
                                                         <Setter Property="Template">
                                                             <Setter.Value>
                                                                 <ControlTemplate TargetType="Button">
                                                                     <Border x:Name="BtnBg" Background="#2B2D31" CornerRadius="8">
-                                                                        <TextBlock x:Name="BtnTxt" Text="Test" 
-                                                                                   Foreground="White" FontWeight="SemiBold" FontSize="14"
-                                                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                                    </Border>
-                                                                    <ControlTemplate.Triggers>
-                                                                        <Trigger Property="IsMouseOver" Value="True">
-                                                                            <Setter TargetName="BtnBg" Property="Background" Value="#35373C"/>
-                                                                        </Trigger>
-                                                                        <DataTrigger Binding="{Binding DevicesViewModel.IsMicTesting}" Value="True">
-                                                                            <Setter TargetName="BtnBg" Property="Background" Value="#DA373C"/>
-                                                                            <Setter TargetName="BtnTxt" Property="Text" Value="Stop"/>
-                                                                        </DataTrigger>
-                                                                    </ControlTemplate.Triggers>
+                                                                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                                             <Path x:Name="BtnIcon" Data="M3.333333333333333 4.666666666666666h1.3333333333333333v6.666666666666666H3.333333333333333V4.666666666666666Zm-2.6666666666666665 2h1.3333333333333333v2.6666666666666665H0.6666666666666666v-2.6666666666666665Zm5.333333333333333 -5.333333333333333h1.3333333333333333v12H6V1.3333333333333333Zm2.6666666666666665 1.3333333333333333h1.3333333333333333v12h-1.3333333333333333V2.6666666666666665Zm2.6666666666666665 2h1.3333333333333333v6.666666666666666h-1.3333333333333333V4.666666666666666Zm2.6666666666666665 2h1.3333333333333333v2.6666666666666665h-1.3333333333333333v-2.6666666666666665Z" 
+                                                                                   Fill="White" Height="14" Width="14" Stretch="Uniform"
+                                                                                   Margin="0,0,6,0">
+                                                                                 <Path.RenderTransformOrigin>
+                                                                                     <Point X="0.5" Y="0.5"/>
+                                                                                 </Path.RenderTransformOrigin>
+                                                                                 <Path.RenderTransform>
+                                                                                     <ScaleTransform x:Name="IconScale" ScaleX="1" ScaleY="1"/>
+                                                                                 </Path.RenderTransform>
+                                                                             </Path>
+                                                                             <TextBlock x:Name="BtnTxt" Text="Test" Foreground="White" 
+                                                                                        FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                                         </StackPanel>
+                                                                     </Border>
+                                                                     <ControlTemplate.Triggers>
+                                                                         <Trigger Property="IsMouseOver" Value="True">
+                                                                             <Setter TargetName="BtnBg" Property="Background" Value="#35373C"/>
+                                                                         </Trigger>
+                                                                         <DataTrigger Binding="{Binding DevicesViewModel.IsMicTesting}" Value="True">
+                                                                             <Setter TargetName="BtnIcon" Property="Fill" Value="#DA373C"/>
+                                                                             <Setter TargetName="BtnTxt" Property="Foreground" Value="#DA373C"/>
+                                                                             <Setter TargetName="BtnTxt" Property="Text" Value="Stop"/>
+                                                                             <DataTrigger.EnterActions>
+                                                                                 <BeginStoryboard x:Name="PulseAnimation">
+                                                                                     <Storyboard>
+                                                                                         <DoubleAnimation Storyboard.TargetName="IconScale" 
+                                                                                                          Storyboard.TargetProperty="ScaleX"
+                                                                                                          To="1.2" Duration="0:0:0.8" AutoReverse="True" RepeatBehavior="Forever"/>
+                                                                                         <DoubleAnimation Storyboard.TargetName="IconScale" 
+                                                                                                          Storyboard.TargetProperty="ScaleY"
+                                                                                                          To="1.2" Duration="0:0:0.8" AutoReverse="True" RepeatBehavior="Forever"/>
+                                                                                     </Storyboard>
+                                                                                 </BeginStoryboard>
+                                                                             </DataTrigger.EnterActions>
+                                                                             <DataTrigger.ExitActions>
+                                                                                 <StopStoryboard BeginStoryboardName="PulseAnimation"/>
+                                                                             </DataTrigger.ExitActions>
+                                                                         </DataTrigger>
+                                                                     </ControlTemplate.Triggers>
                                                                 </ControlTemplate>
                                                             </Setter.Value>
                                                         </Setter>
@@ -680,7 +775,7 @@
                                             <!-- Segmented Volume Meter (Discord Style) -->
                                             <Grid Grid.Column="1" VerticalAlignment="Center" Margin="0,0,10,0">
                                                 <ProgressBar Value="{Binding DevicesViewModel.MicTestLevel}" 
-                                                             Maximum="100" Height="16" Background="Transparent" BorderThickness="0">
+                                                             Maximum="100" Height="14" Background="Transparent" BorderThickness="0">
                                                     <ProgressBar.Template>
                                                         <ControlTemplate TargetType="ProgressBar">
                                                             <Grid x:Name="TemplateRoot">
@@ -689,7 +784,7 @@
                                                                     <Rectangle.OpacityMask>
                                                                         <VisualBrush TileMode="Tile" Viewport="0,0,8,1" ViewportUnits="Absolute">
                                                                             <VisualBrush.Visual>
-                                                                                <Rectangle Fill="White" Width="5" Height="16" RadiusX="1.5" RadiusY="1.5" Margin="0,0,3,0"/>
+                                                                                <Rectangle Fill="White" Width="5" Height="14" RadiusX="1.5" RadiusY="1.5" Margin="0,0,3,0"/>
                                                                             </VisualBrush.Visual>
                                                                         </VisualBrush>
                                                                     </Rectangle.OpacityMask>
@@ -701,7 +796,7 @@
                                                                         <Rectangle.OpacityMask>
                                                                             <VisualBrush TileMode="Tile" Viewport="0,0,8,1" ViewportUnits="Absolute">
                                                                                 <VisualBrush.Visual>
-                                                                                    <Rectangle Fill="White" Width="5" Height="16" RadiusX="1.5" RadiusY="1.5" Margin="0,0,3,0"/>
+                                                                                    <Rectangle Fill="White" Width="5" Height="14" RadiusX="1.5" RadiusY="1.5" Margin="0,0,3,0"/>
                                                                                 </VisualBrush.Visual>
                                                                             </VisualBrush>
                                                                         </Rectangle.OpacityMask>
@@ -718,30 +813,35 @@
                                             </Grid>
                                         </Grid>
 
-                                        <CheckBox IsChecked="{Binding DevicesViewModel.IsMicLoopback}" 
-                                                  Margin="0,10,0,0" Cursor="Hand">
-                                            <CheckBox.Template>
-                                                <ControlTemplate TargetType="CheckBox">
-                                                    <StackPanel Orientation="Horizontal">
-                                                        <Border x:Name="Chk" Width="16" Height="16" CornerRadius="4" 
-                                                                BorderBrush="{StaticResource Border}" BorderThickness="1" 
-                                                                Background="{StaticResource BgRaised}" Margin="0,0,8,0">
-                                                            <TextBlock x:Name="CheckMark" Text="✓" FontSize="11" 
-                                                                       Foreground="White" HorizontalAlignment="Center" 
-                                                                       VerticalAlignment="Center" Visibility="Collapsed"/>
-                                                        </Border>
-                                                        <TextBlock Text="Hear Yourself" Foreground="{StaticResource TextMid}" FontSize="12"/>
-                                                    </StackPanel>
-                                                    <ControlTemplate.Triggers>
-                                                        <Trigger Property="IsChecked" Value="True">
-                                                            <Setter TargetName="Chk" Property="Background" Value="#5865F2"/>
-                                                            <Setter TargetName="Chk" Property="BorderBrush" Value="#5865F2"/>
-                                                            <Setter TargetName="CheckMark" Property="Visibility" Value="Visible"/>
-                                                        </Trigger>
-                                                    </ControlTemplate.Triggers>
-                                                </ControlTemplate>
-                                            </CheckBox.Template>
-                                        </CheckBox>
+                                        <DockPanel LastChildFill="False" Margin="0,14,0,0">
+                                            <TextBlock Text="Test your microphone level and latency." Foreground="{StaticResource TextLow}" FontSize="11" VerticalAlignment="Center"/>
+                                            <CheckBox IsChecked="{Binding DevicesViewModel.IsMicLoopback}" 
+                                                      DockPanel.Dock="Right" Cursor="Hand">
+                                                <CheckBox.Template>
+                                                    <ControlTemplate TargetType="CheckBox">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <Border x:Name="Chk" Width="14" Height="14" CornerRadius="3" 
+                                                                    BorderBrush="{StaticResource Border}" BorderThickness="1" 
+                                                                    Background="#1AFFFFFF" Margin="0,0,8,0">
+                                                                <TextBlock x:Name="CheckMark" Text="✓" FontSize="9" 
+                                                                           Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed"/>
+                                                            </Border>
+                                                            <TextBlock Text="Listen to this device" Foreground="{StaticResource TextMid}" FontSize="12" VerticalAlignment="Center"/>
+                                                        </StackPanel>
+                                                        <ControlTemplate.Triggers>
+                                                            <Trigger Property="IsChecked" Value="True">
+                                                                <Setter TargetName="Chk" Property="Background" Value="{StaticResource Accent}"/>
+                                                                <Setter TargetName="Chk" Property="BorderBrush" Value="{StaticResource Accent}"/>
+                                                                <Setter TargetName="CheckMark" Property="Visibility" Value="Visible"/>
+                                                            </Trigger>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter TargetName="Chk" Property="BorderBrush" Value="{StaticResource TextMid}"/>
+                                                            </Trigger>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </CheckBox.Template>
+                                            </CheckBox>
+                                        </DockPanel>
                                     </StackPanel>
                                 </Border>
                                 <ListBox DockPanel.Dock="Top" Margin="6,6,6,6"

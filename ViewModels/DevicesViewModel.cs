@@ -167,6 +167,13 @@ namespace EchoX.ViewModels
         public ICommand SetCallOutputCommand { get; }
         public ICommand ToggleMicTestCommand { get; }
 
+        private bool _isMicTestExpanded;
+        public bool IsMicTestExpanded
+        {
+            get => _isMicTestExpanded;
+            set => SetProperty(ref _isMicTestExpanded, value);
+        }
+
         private bool _isMicTesting;
         public bool IsMicTesting
         {

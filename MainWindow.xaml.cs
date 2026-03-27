@@ -262,6 +262,12 @@ namespace EchoX
         private void CloseBtn_Click(object sender, RoutedEventArgs e)
             => CloseApp();
 
+        private void ProfileHeading_Click(object sender, RoutedEventArgs e)
+        {
+            MainTabControl.SelectedIndex = 1;
+            UpdateActiveNavButton(1);
+        }
+
         private void SidebarButton_Click(object sender, RoutedEventArgs e)
         {
             if (sender is not System.Windows.Controls.Button button || button.Tag is not string tag)
