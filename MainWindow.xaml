@@ -4,7 +4,7 @@
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         xmlns:converters="clr-namespace:EchoX.Converters"
         Title="EchoX" Height="680" Width="1000"
-        Icon="Assets/LOGO/EchoX.png"
+        Icon="Assets/LOGO/EchoX_exe.ico"
         Background="#0F0F11" WindowStartupLocation="CenterScreen"
         FontFamily="Segoe UI" FontSize="13"
         WindowStyle="None" AllowsTransparency="False"
@@ -18,6 +18,7 @@
     <Window.Resources>
         <converters:ObjectEqualityConverter x:Key="ObjectEqualityConverter"/>
         <converters:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter"/>
+        <converters:GreaterThanConverter x:Key="GreaterThanConverter"/>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
         <!-- Colors -->
         <SolidColorBrush x:Key="BgBase"      Color="#0F0F11"/>
@@ -478,7 +479,7 @@
                         <StackPanel Orientation="Horizontal">
                             <Border Background="Transparent" CornerRadius="8" 
                                     Width="32" Height="32" Margin="0,0,10,0">
-                                <Image Source="Assets/LOGO/EchoX.png" RenderOptions.BitmapScalingMode="HighQuality"/>
+                                <Image Source="Assets/LOGO/EchoX.ico" RenderOptions.BitmapScalingMode="HighQuality"/>
                             </Border>
                             <StackPanel VerticalAlignment="Center">
                                 <TextBlock Text="EchoX" Foreground="{StaticResource TextHi}"
@@ -631,77 +632,117 @@
                                                        FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                         </StackPanel>
 
-                                        <ToggleButton HorizontalAlignment="Right" VerticalAlignment="Center"
-                                                      IsChecked="{Binding DevicesViewModel.IsMicTesting}"
-                                                      ToolTip="Toggle Microphone Test"
-                                                      Width="60" Height="24" Cursor="Hand">
-                                            <ToggleButton.Template>
-                                                <ControlTemplate TargetType="ToggleButton">
-                                                    <Border x:Name="Bg" Background="Transparent" CornerRadius="12" BorderBrush="{StaticResource Border}" BorderThickness="1">
-                                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                                            <Path x:Name="Icon" Data="M12,2A3,3 0 0,1 15,5V11A3,3 0 0,1 12,14A3,3 0 0,1 9,11V5A3,3 0 0,1 12,2M19,11C19,14.53 16.39,17.44 13,17.93V21H11V17.93C7.61,17.44 5,14.53 5,11H7A5,5 0 0,0 12,16A5,5 0 0,0 17,11H19Z" 
-                                                                  Fill="{StaticResource TextMid}" 
-                                                                  Width="10" Height="10" Stretch="Uniform"
-                                                                  VerticalAlignment="Center" Margin="0,0,4,0"/>
-                                                            <TextBlock x:Name="Txt" Text="Test" FontSize="11" Foreground="{StaticResource TextMid}" VerticalAlignment="Center"/>
-                                                        </StackPanel>
-                                                    </Border>
+                                    </Grid>
+                                </Border>
+                                
+                                <!-- Mic Test Section (Discord Style) -->
+                                <Border DockPanel.Dock="Bottom" Background="#0F0F11" 
+                                        CornerRadius="0,0,8,8" Padding="14,12" BorderBrush="{StaticResource Border}" BorderThickness="0,1,0,0">
+                                    <StackPanel>
+                                        <TextBlock Text="Mic Test" Foreground="White" 
+                                                   FontSize="16" FontWeight="Bold" Margin="0,0,0,16" FontFamily="Segoe UI, sans-serif"/>
+                                        
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            
+                                            <!-- Test Button -->
+                                            <Button Grid.Column="0" Command="{Binding DevicesViewModel.ToggleMicTestCommand}"
+                                                    Width="76" Height="36" Cursor="Hand" Margin="0,0,16,0">
+                                                <Button.Style>
+                                                    <Style TargetType="Button">
+                                                        <Setter Property="Template">
+                                                            <Setter.Value>
+                                                                <ControlTemplate TargetType="Button">
+                                                                    <Border x:Name="BtnBg" Background="#2B2D31" CornerRadius="8">
+                                                                        <TextBlock x:Name="BtnTxt" Text="Test" 
+                                                                                   Foreground="White" FontWeight="SemiBold" FontSize="14"
+                                                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                                    </Border>
+                                                                    <ControlTemplate.Triggers>
+                                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                                            <Setter TargetName="BtnBg" Property="Background" Value="#35373C"/>
+                                                                        </Trigger>
+                                                                        <DataTrigger Binding="{Binding DevicesViewModel.IsMicTesting}" Value="True">
+                                                                            <Setter TargetName="BtnBg" Property="Background" Value="#DA373C"/>
+                                                                            <Setter TargetName="BtnTxt" Property="Text" Value="Stop"/>
+                                                                        </DataTrigger>
+                                                                    </ControlTemplate.Triggers>
+                                                                </ControlTemplate>
+                                                            </Setter.Value>
+                                                        </Setter>
+                                                    </Style>
+                                                </Button.Style>
+                                            </Button>
+
+                                            <!-- Segmented Volume Meter (Discord Style) -->
+                                            <Grid Grid.Column="1" VerticalAlignment="Center" Margin="0,0,10,0">
+                                                <ProgressBar Value="{Binding DevicesViewModel.MicTestLevel}" 
+                                                             Maximum="100" Height="16" Background="Transparent" BorderThickness="0">
+                                                    <ProgressBar.Template>
+                                                        <ControlTemplate TargetType="ProgressBar">
+                                                            <Grid x:Name="TemplateRoot">
+                                                                <!-- Inactive background segments -->
+                                                                <Rectangle Fill="#2E2E34">
+                                                                    <Rectangle.OpacityMask>
+                                                                        <VisualBrush TileMode="Tile" Viewport="0,0,8,1" ViewportUnits="Absolute">
+                                                                            <VisualBrush.Visual>
+                                                                                <Rectangle Fill="White" Width="5" Height="16" RadiusX="1.5" RadiusY="1.5" Margin="0,0,3,0"/>
+                                                                            </VisualBrush.Visual>
+                                                                        </VisualBrush>
+                                                                    </Rectangle.OpacityMask>
+                                                                </Rectangle>
+                                                                
+                                                                <!-- Active colored segments (Bright Green #23A559) -->
+                                                                <Grid HorizontalAlignment="Left" Width="{Binding ElementName=PART_Indicator, Path=ActualWidth}" ClipToBounds="True">
+                                                                    <Rectangle Width="{Binding ElementName=TemplateRoot, Path=ActualWidth}" HorizontalAlignment="Left" Fill="#23A559">
+                                                                        <Rectangle.OpacityMask>
+                                                                            <VisualBrush TileMode="Tile" Viewport="0,0,8,1" ViewportUnits="Absolute">
+                                                                                <VisualBrush.Visual>
+                                                                                    <Rectangle Fill="White" Width="5" Height="16" RadiusX="1.5" RadiusY="1.5" Margin="0,0,3,0"/>
+                                                                                </VisualBrush.Visual>
+                                                                            </VisualBrush>
+                                                                        </Rectangle.OpacityMask>
+                                                                    </Rectangle>
+                                                                </Grid>
+                                                                
+                                                                <!-- Hidden tracks for measurement -->
+                                                                <Border x:Name="PART_Track" Visibility="Hidden"/>
+                                                                <Border x:Name="PART_Indicator" Visibility="Hidden" HorizontalAlignment="Left"/>
+                                                            </Grid>
+                                                        </ControlTemplate>
+                                                    </ProgressBar.Template>
+                                                </ProgressBar>
+                                            </Grid>
+                                        </Grid>
+
+                                        <CheckBox IsChecked="{Binding DevicesViewModel.IsMicLoopback}" 
+                                                  Margin="0,10,0,0" Cursor="Hand">
+                                            <CheckBox.Template>
+                                                <ControlTemplate TargetType="CheckBox">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Border x:Name="Chk" Width="16" Height="16" CornerRadius="4" 
+                                                                BorderBrush="{StaticResource Border}" BorderThickness="1" 
+                                                                Background="{StaticResource BgRaised}" Margin="0,0,8,0">
+                                                            <TextBlock x:Name="CheckMark" Text="✓" FontSize="11" 
+                                                                       Foreground="White" HorizontalAlignment="Center" 
+                                                                       VerticalAlignment="Center" Visibility="Collapsed"/>
+                                                        </Border>
+                                                        <TextBlock Text="Hear Yourself" Foreground="{StaticResource TextMid}" FontSize="12"/>
+                                                    </StackPanel>
                                                     <ControlTemplate.Triggers>
-                                                        <Trigger Property="IsMouseOver" Value="True">
-                                                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource BgCard}"/>
-                                                            <Setter TargetName="Icon" Property="Fill" Value="{StaticResource Accent}"/>
-                                                            <Setter TargetName="Txt" Property="Foreground" Value="{StaticResource TextHi}"/>
-                                                        </Trigger>
                                                         <Trigger Property="IsChecked" Value="True">
-                                                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource AccentLow}"/>
-                                                            <Setter TargetName="Bg" Property="BorderBrush" Value="{StaticResource Accent}"/>
-                                                            <Setter TargetName="Icon" Property="Fill" Value="{StaticResource TextHi}"/>
-                                                            <Setter TargetName="Txt" Property="Foreground" Value="{StaticResource TextHi}"/>
-                                                            <Setter TargetName="Txt" Property="Text" Value="Live"/>
+                                                            <Setter TargetName="Chk" Property="Background" Value="#5865F2"/>
+                                                            <Setter TargetName="Chk" Property="BorderBrush" Value="#5865F2"/>
+                                                            <Setter TargetName="CheckMark" Property="Visibility" Value="Visible"/>
                                                         </Trigger>
                                                     </ControlTemplate.Triggers>
                                                 </ControlTemplate>
-                                            </ToggleButton.Template>
-                                        </ToggleButton>
-                                    </Grid>
-                                </Border>
-
-                                <Border DockPanel.Dock="Top" x:Name="MicTestPanel" Background="{StaticResource BgSurface}" ClipToBounds="True">
-                                    <Border.Style>
-                                        <Style TargetType="Border">
-                                            <Setter Property="Height" Value="0"/>
-                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding DevicesViewModel.IsMicTesting}" Value="True">
-                                                    <Setter Property="Visibility" Value="Visible"/>
-                                                    <DataTrigger.EnterActions>
-                                                        <BeginStoryboard>
-                                                            <Storyboard>
-                                                                <DoubleAnimation Storyboard.TargetProperty="Height" To="35" Duration="0:0:0.2"/>
-                                                            </Storyboard>
-                                                        </BeginStoryboard>
-                                                    </DataTrigger.EnterActions>
-                                                    <DataTrigger.ExitActions>
-                                                        <BeginStoryboard>
-                                                            <Storyboard>
-                                                                <DoubleAnimation Storyboard.TargetProperty="Height" To="0" Duration="0:0:0.2"/>
-                                                            </Storyboard>
-                                                        </BeginStoryboard>
-                                                    </DataTrigger.ExitActions>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Border.Style>
-                                    <Grid Margin="14,10,14,10">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock Text="Input Level" FontSize="10" Foreground="{StaticResource TextMid}" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                                        <ProgressBar Grid.Column="1" Value="{Binding DevicesViewModel.CurrentInputDevice.Peak}" 
-                                                     Maximum="100" Height="4" Background="{StaticResource BgBase}" BorderThickness="0"
-                                                     Foreground="{StaticResource Accent}" VerticalAlignment="Center"/>
-                                    </Grid>
+                                            </CheckBox.Template>
+                                        </CheckBox>
+                                    </StackPanel>
                                 </Border>
                                 <ListBox DockPanel.Dock="Top" Margin="6,6,6,6"
                                          ItemsSource="{Binding DevicesViewModel.InputDevices}"
