@@ -2,50 +2,52 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Media;
+using System.Runtime.InteropServices;
 using AudioSwitcher.AudioApi.CoreAudio;
+using NAudio.CoreAudioApi;
+using NAudio.Wave;
 
 namespace EchoX.Services
 {
     public class AudioEngine
     {
-        private readonly Lazy<CoreAudioController> _lazyController = 
+        private readonly Lazy<CoreAudioController> _controller =
             new Lazy<CoreAudioController>(() => new CoreAudioController());
+        private readonly SoundPlayer? _testTonePlayer = null;
+        private DateTime _lastPlayTime = DateTime.MinValue;
 
-        private CoreAudioController _controller => _lazyController.Value;
+        private WasapiCapture? _micCapture;
+        private WasapiOut? _micOut;
+        private BufferedWaveProvider? _micWaveProvider;
 
         public AudioEngine()
         {
+            // Pre-load your custom audio.wav from the Assets folder so it's instant-fire
+            string wavPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "audio.wav");
+            if (System.IO.File.Exists(wavPath))
+            {
+                _testTonePlayer = new SoundPlayer(wavPath);
+                try { _testTonePlayer.LoadAsync(); } catch { }
+            }
         }
 
         // 1. Fetch all active Output Devices (Speakers/Headphones)
-        public List<CoreAudioDevice> GetSpeakers()
-        {
-            return _controller.GetPlaybackDevices(AudioSwitcher.AudioApi.DeviceState.Active).ToList();
-        }
+        public List<CoreAudioDevice> GetSpeakers() => _controller.Value.GetPlaybackDevices(AudioSwitcher.AudioApi.DeviceState.Active).ToList();
 
         // 2. Fetch all active Input Devices (Microphones)
-        public List<CoreAudioDevice> GetMicrophones()
-        {
-            return _controller.GetCaptureDevices(AudioSwitcher.AudioApi.DeviceState.Active).ToList();
-        }
+        public List<CoreAudioDevice> GetMicrophones() => _controller.Value.GetCaptureDevices(AudioSwitcher.AudioApi.DeviceState.Active).ToList();
 
-        // 3. Get the current Windows default playback device
-        public CoreAudioDevice? GetDefaultSpeaker() => _controller.DefaultPlaybackDevice;
+        public CoreAudioDevice? GetDefaultSpeaker() => _controller.Value.DefaultPlaybackDevice;
+        public CoreAudioDevice? GetDefaultMicrophone() => _controller.Value.DefaultCaptureDevice;
+        public CoreAudioDevice? GetDefaultCommunicationsSpeaker() => _controller.Value.DefaultPlaybackCommunicationsDevice;
+        public CoreAudioDevice? GetDefaultCommunicationsMicrophone() => _controller.Value.DefaultCaptureCommunicationsDevice;
 
-        // 4. Get the current Windows default capture device
-        public CoreAudioDevice? GetDefaultMicrophone() => _controller.DefaultCaptureDevice;
+        public CoreAudioDevice? GetDeviceByGuid(Guid guid) => _controller.Value.GetDevice(guid);
 
-        // Get the current default communications playback device
-        public CoreAudioDevice? GetDefaultCommunicationsSpeaker() => _controller.DefaultPlaybackCommunicationsDevice;
-
-        // Get the current default communications capture device
-        public CoreAudioDevice? GetDefaultCommunicationsMicrophone() => _controller.DefaultCaptureCommunicationsDevice;
-
-        // 3. The Magic Function: Force Windows to switch devices
         public void SwitchDevice(string deviceId)
         {
             if (!Guid.TryParse(deviceId, out var guid)) return;
-            var device = _controller.GetDevice(guid);
+            var device = _controller.Value.GetDevice(guid);
             if (device != null)
             {
                 device.SetAsDefault();
@@ -53,34 +55,30 @@ namespace EchoX.Services
             }
         }
 
-        // Set only as the default communications (call) device
         public void SetAsCallDevice(string deviceId)
         {
             if (!Guid.TryParse(deviceId, out var guid)) return;
-            var device = _controller.GetDevice(guid);
+            var device = _controller.Value.GetDevice(guid);
             device?.SetAsDefaultCommunications();
         }
 
-        // Get volume (0-100) for a device
         public double GetVolume(string deviceId)
         {
             if (!Guid.TryParse(deviceId, out var guid)) return 0;
-            return _controller.GetDevice(guid)?.Volume ?? 0;
+            return _controller.Value.GetDevice(guid)?.Volume ?? 0;
         }
 
-        // Set volume (0-100) for a device
         public void SetVolume(string deviceId, double volume)
         {
             if (!Guid.TryParse(deviceId, out var guid)) return;
-            var device = _controller.GetDevice(guid);
+            var device = _controller.Value.GetDevice(guid);
             if (device != null) device.Volume = volume;
         }
 
-        // Subscribe to real-time volume changes for a device. Returns IDisposable to unsubscribe.
         public IDisposable WatchVolume(string deviceId, Action<double> onChanged)
         {
             if (!Guid.TryParse(deviceId, out var guid)) return new NoopDisposable();
-            var device = _controller.GetDevice(guid);
+            var device = _controller.Value.GetDevice(guid);
             if (device == null) return new NoopDisposable();
             return device.VolumeChanged.Subscribe(new VolumeObserver(onChanged));
         }
@@ -95,59 +93,117 @@ namespace EchoX.Services
             public void OnCompleted() { }
         }
 
+        public IDisposable WatchPeak(string deviceId, Action<double> onChanged)
+        {
+            if (!Guid.TryParse(deviceId, out var guid)) return new NoopDisposable();
+            var device = _controller.Value.GetDevice(guid);
+            if (device == null) return new NoopDisposable();
+            return device.PeakValueChanged.Subscribe(new PeakObserver(onChanged));
+        }
+
+        private class PeakObserver : IObserver<AudioSwitcher.AudioApi.DevicePeakValueChangedArgs>
+        {
+            private readonly Action<double> _callback;
+            public PeakObserver(Action<double> callback) => _callback = callback;
+            public void OnNext(AudioSwitcher.AudioApi.DevicePeakValueChangedArgs args) =>
+                System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() => _callback(args.PeakValue)));
+            public void OnError(Exception error) { }
+            public void OnCompleted() { }
+        }
+
+        public IDisposable WatchDevices(Action onChanged)
+        {
+            return _controller.Value.AudioDeviceChanged.Subscribe(new DeviceObserver(onChanged));
+        }
+
+        private class DeviceObserver : IObserver<AudioSwitcher.AudioApi.DeviceChangedArgs>
+        {
+            private readonly Action _callback;
+            public DeviceObserver(Action callback) => _callback = callback;
+            public void OnNext(AudioSwitcher.AudioApi.DeviceChangedArgs args) =>
+                System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() => _callback()));
+            public void OnError(Exception error) { }
+            public void OnCompleted() { }
+        }
+
         private class NoopDisposable : IDisposable { public void Dispose() { } }
 
-        // 4. The Panic Button: Mute the current default microphone
         public bool ToggleMuteDefaultMic()
         {
-            // Grab whichever mic is currently active in Windows
-            var mic = _controller.DefaultCaptureDevice;
-            
+            var mic = _controller.Value.DefaultCaptureDevice;
             if (mic != null)
             {
-                // Flip the mute state (if unmuted, mute it. If muted, unmute it)
                 mic.Mute(!mic.IsMuted);
-                return mic.IsMuted; // Return the new state so we can notify the user
+                return mic.IsMuted;
             }
             return false;
         }
 
-        // Play a test tone through a specific output device
+        public bool IsDefaultMicMuted => _controller.Value.DefaultCaptureDevice?.IsMuted ?? false;
+
+        public void StartMicMonitor(string deviceId)
+        {
+            try
+            {
+                StopMicMonitor();
+                
+                var enumerator = new MMDeviceEnumerator();
+                var mic = enumerator.GetDevice(deviceId);
+                
+                _micCapture = new WasapiCapture(mic, true, 20); // 20ms latency
+                _micWaveProvider = new BufferedWaveProvider(_micCapture.WaveFormat)
+                {
+                    DiscardOnBufferOverflow = true
+                };
+
+                _micCapture.DataAvailable += (s, e) =>
+                    _micWaveProvider.AddSamples(e.Buffer, 0, e.BytesRecorded);
+
+                _micOut = new WasapiOut(AudioClientShareMode.Shared, 20);
+                _micOut.Init(_micWaveProvider);
+                
+                _micCapture.StartRecording();
+                _micOut.Play();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Mic Monitor Failed: {ex.Message}");
+            }
+        }
+
+        public void StopMicMonitor()
+        {
+            _micCapture?.StopRecording();
+            _micCapture?.Dispose();
+            _micCapture = null;
+
+            _micOut?.Stop();
+            _micOut?.Dispose();
+            _micOut = null;
+            
+            _micWaveProvider = null;
+        }
+
         public void PlayTestTone(string deviceId)
         {
-            if (!Guid.TryParse(deviceId, out var guid)) return;
+            if ((DateTime.Now - _lastPlayTime).TotalMilliseconds < 50) return;
+            _lastPlayTime = DateTime.Now;
 
-            System.Threading.Tasks.Task.Run(() =>
+            try
             {
-                try
+                if (_testTonePlayer != null)
                 {
-                    var target = _controller.GetDevice(guid);
-                    if (target == null) return;
-
-                    var previous = _controller.DefaultPlaybackDevice;
-                    target.SetAsDefault();
-
-                    var wavPath = System.IO.Path.Combine(
-                        AppDomain.CurrentDomain.BaseDirectory, "Assets", "audio.wav");
-
-                    if (System.IO.File.Exists(wavPath))
-                    {
-                        using var player = new System.Media.SoundPlayer(wavPath);
-                        player.PlaySync(); // blocks until done
-                    }
-                    else
-                    {
-                        System.Threading.Thread.Sleep(500);
-                    }
-
-                    if (previous != null && previous.Id != target.Id)
-                        previous.SetAsDefault();
+                    _testTonePlayer.Play(); 
                 }
-                catch (Exception ex)
+                else
                 {
-                    System.Diagnostics.Debug.WriteLine($"PlayTestTone failed: {ex.Message}");
+                    SystemSounds.Asterisk.Play();
                 }
-            });
+            }
+            catch
+            {
+                SystemSounds.Beep.Play();
+            }
         }
     }
 }

@@ -11,14 +11,21 @@ namespace EchoX.ViewModels
     {
         private readonly AudioEngine _audioEngine;
         private readonly StorageService _storageService;
+        private readonly MainWindowViewModel _mainWindowViewModel;
 
         private AudioDevice? _currentCallInputDevice;
         private AudioDevice? _currentCallOutputDevice;
         private IDisposable? _inputVolumeWatcher;
         private IDisposable? _outputVolumeWatcher;
+        private IDisposable? _deviceWatcher;
+        private IDisposable? _micPeakWatcher;
+        private System.Windows.Threading.DispatcherTimer? _micTestTimer;
+        private double _targetPeak;
+        private double _currentPeak;
 
-        public DevicesViewModel(AudioEngine audioEngine, StorageService storageService)
+        public DevicesViewModel(MainWindowViewModel mainWindowViewModel, AudioEngine audioEngine, StorageService storageService)
         {
+            _mainWindowViewModel = mainWindowViewModel;
             _audioEngine = audioEngine;
             _storageService = storageService;
 
@@ -27,6 +34,7 @@ namespace EchoX.ViewModels
             SwitchOutputCommand  = new RelayCommand<AudioDevice>(SwitchDevice);
             SetCallInputCommand  = new RelayCommand<AudioDevice>(SetCallInput);
             SetCallOutputCommand = new RelayCommand<AudioDevice>(SetCallOutput);
+            ToggleMicTestCommand = new RelayCommand(() => IsMicTesting = !IsMicTesting);
 
             // Step 1: Load cache immediately for "instant" feel
             var cache = _storageService.LoadDeviceCache();
@@ -44,6 +52,11 @@ namespace EchoX.ViewModels
 
             // Step 2: Refresh the list in the background
             System.Threading.Tasks.Task.Run(() => LoadDevices());
+
+            // Step 3: Watch for new devices (USB plug/unplug) in realtime
+            _deviceWatcher = _audioEngine.WatchDevices(() => {
+                System.Threading.Tasks.Task.Run(() => LoadDevices());
+            });
         }
 
         public ObservableCollection<AudioDevice> InputDevices  { get; } = new ObservableCollection<AudioDevice>();
@@ -57,9 +70,19 @@ namespace EchoX.ViewModels
             {
                 if (SetProperty(ref _currentInputDevice, value) && value != null)
                 {
-                    _audioEngine.SwitchDevice(value.Id);
-                    UpdateVolumeAndWatchers(value, true);
-                    RefreshActiveProfile();
+                    // Offload heavy hardware switch to background to keep UI snappy
+                    System.Threading.Tasks.Task.Run(() =>
+                    {
+                        _audioEngine.SwitchDevice(value.Id);
+                        
+                        System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
+                        {
+                            UpdateVolumeAndWatchers(value, true);
+                            UpdateDeviceMuteStates(); // Sync labels
+                            RefreshActiveProfile();
+                            if (IsMicTesting) StartMicTest();
+                        }));
+                    });
                 }
             }
         }
@@ -72,9 +95,17 @@ namespace EchoX.ViewModels
             {
                 if (SetProperty(ref _currentOutputDevice, value) && value != null)
                 {
-                    _audioEngine.SwitchDevice(value.Id);
-                    UpdateVolumeAndWatchers(value, false);
-                    RefreshActiveProfile();
+                    System.Threading.Tasks.Task.Run(() =>
+                    {
+                        _audioEngine.SwitchDevice(value.Id);
+                        
+                        System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
+                        {
+                            UpdateVolumeAndWatchers(value, false);
+                            UpdateDeviceMuteStates(); // Sync labels
+                            RefreshActiveProfile();
+                        }));
+                    });
                 }
             }
         }
@@ -134,6 +165,76 @@ namespace EchoX.ViewModels
         public ICommand SwitchOutputCommand  { get; }
         public ICommand SetCallInputCommand  { get; }
         public ICommand SetCallOutputCommand { get; }
+        public ICommand ToggleMicTestCommand { get; }
+
+        private bool _isMicTesting;
+        public bool IsMicTesting
+        {
+            get => _isMicTesting;
+            set
+            {
+                if (SetProperty(ref _isMicTesting, value))
+                {
+                    if (value) StartMicTest();
+                    else StopMicTest();
+                }
+            }
+        }
+
+        private void StartMicTest()
+        {
+            if (CurrentInputDevice == null) return;
+
+            _micPeakWatcher?.Dispose();
+            
+            // Re-zero
+            _targetPeak = 0;
+            _currentPeak = 0;
+
+            // Use high-priority timer for smooth "analog-like" meter movement
+            _micTestTimer?.Stop();
+            _micTestTimer = new System.Windows.Threading.DispatcherTimer(System.Windows.Threading.DispatcherPriority.Render)
+            {
+                Interval = TimeSpan.FromMilliseconds(20) // 50 FPS
+            };
+            _micTestTimer.Tick += (s, e) =>
+            {
+                // Smoothly interpolate towards target but decay quickly
+                if (_targetPeak > _currentPeak)
+                    _currentPeak = (_currentPeak * 0.4) + (_targetPeak * 0.6); // Fast rise
+                else
+                    _currentPeak = (_currentPeak * 0.9) - 0.01; // Slow, natural decay
+
+                if (_currentPeak < 0) _currentPeak = 0;
+
+                if (CurrentInputDevice != null)
+                {
+                    // Standard peak meter visuals
+                    // Only reaches 100% (full) when receiving a very loud input signal
+                    double level = _currentPeak * 100;
+                    if (level > 100) level = 100;
+                    CurrentInputDevice.Peak = level;
+                }
+            };
+            _micTestTimer.Start();
+
+            _micPeakWatcher = _audioEngine.WatchPeak(CurrentInputDevice.Id, peak =>
+            {
+                _targetPeak = peak;
+            });
+
+            _audioEngine.StartMicMonitor(CurrentInputDevice.Id);
+        }
+
+        private void StopMicTest()
+        {
+            _micTestTimer?.Stop();
+            _audioEngine.StopMicMonitor();
+            _micPeakWatcher?.Dispose();
+            _micPeakWatcher = null;
+            if (CurrentInputDevice != null)
+                CurrentInputDevice.Peak = 0;
+        }
 
         private void LoadDevices()
         {
@@ -256,9 +357,25 @@ namespace EchoX.ViewModels
             ActiveProfileName = match?.Name;
         }
 
+        public void UpdateDeviceMuteStates()
+        {
+            // Refresh mute states of all input devices from hardware
+            foreach (var device in InputDevices)
+            {
+                if (Guid.TryParse(device.Id, out var guid))
+                {
+                    try {
+                        var realDevice = _audioEngine.GetDeviceByGuid(guid);
+                        if (realDevice != null) device.IsMuted = realDevice.IsMuted;
+                    } catch { }
+                }
+            }
+        }
+
         private void SwitchDevice(AudioDevice device)
         {
-            _audioEngine.SwitchDevice(device.Id);
+            // The setter for CurrentInput/OutputDevice already triggers the background switch.
+            // Calling _audioEngine.SwitchDevice(device.Id) here would create a duplicate task.
             if (InputDevices.Contains(device))
                 CurrentInputDevice = device;
             else if (OutputDevices.Contains(device))

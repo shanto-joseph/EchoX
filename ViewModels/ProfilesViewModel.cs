@@ -14,6 +14,7 @@ namespace EchoX.ViewModels
         private readonly StorageService _storageService;
         private readonly MainWindowViewModel _mainWindowViewModel;
         private int _currentProfileIndex = -1;
+        private IDisposable? _deviceWatcher;
 
         public ProfilesViewModel(MainWindowViewModel mainWindowViewModel, AudioEngine audioEngine, StorageService storageService)
         {
@@ -31,6 +32,11 @@ namespace EchoX.ViewModels
 
             // Step 2: Refresh asynchronously
             System.Threading.Tasks.Task.Run(() => InitialLoad());
+
+            // Step 3: Watch for new devices (USB plug/unplug) in realtime
+            _deviceWatcher = _audioEngine.WatchDevices(() => {
+                System.Threading.Tasks.Task.Run(() => InitialLoad());
+            });
         }
 
         private void LoadFromCache()
@@ -143,12 +149,30 @@ namespace EchoX.ViewModels
         {
             try
             {
+                // Delegate to DevicesViewModel properties - these now handle switches in the background
+                var devVm = _mainWindowViewModel.DevicesViewModel;
+
                 if (!string.IsNullOrEmpty(profile.InputDeviceId))
-                    _audioEngine.SwitchDevice(profile.InputDeviceId!);
+                {
+                    var match = devVm.InputDevices.FirstOrDefault(d => d.Id == profile.InputDeviceId);
+                    if (match != null) devVm.CurrentInputDevice = match;
+                }
+
                 if (!string.IsNullOrEmpty(profile.OutputDeviceId))
-                    _audioEngine.SwitchDevice(profile.OutputDeviceId!);
+                {
+                    var match = devVm.OutputDevices.FirstOrDefault(d => d.Id == profile.OutputDeviceId);
+                    if (match != null) devVm.CurrentOutputDevice = match;
+                }
+
                 if (!string.IsNullOrEmpty(profile.CallDeviceId))
-                    _audioEngine.SetAsCallDevice(profile.CallDeviceId!);
+                {
+                    // Call device is specific, background it directly
+                    System.Threading.Tasks.Task.Run(() => _audioEngine.SetAsCallDevice(profile.CallDeviceId!));
+                    
+                    // Update visual call marker in UI
+                    var callDev = devVm.InputDevices.Concat(devVm.OutputDevices).FirstOrDefault(d => d.Id == profile.CallDeviceId);
+                    if (callDev != null) devVm.SetCallInputCommand.Execute(callDev); // This updates the UI dots
+                }
             }
             catch (Exception ex)
             {
@@ -189,7 +213,15 @@ namespace EchoX.ViewModels
         public void ToggleMicMute()
         {
             bool isNowMuted = _audioEngine.ToggleMuteDefaultMic();
+            
+            // Invoke the event for MainWindow tray icon/GUI
+            _mainWindowViewModel.OnMicrophoneMuteChanged(isNowMuted);
+            
+            // Notify via tray balloon
             _mainWindowViewModel.NotifyTray("Microphone", isNowMuted ? "Muted" : "Unmuted");
+
+            // Update UI list for devices
+            _mainWindowViewModel.DevicesViewModel.UpdateDeviceMuteStates();
         }
     }
 }
