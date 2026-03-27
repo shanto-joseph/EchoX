@@ -192,8 +192,25 @@ namespace EchoX
         // When the user clicks the standard minimize button [-]
         protected override void OnStateChanged(EventArgs e)
         {
-            // Allow normal minimization to taskbar
             base.OnStateChanged(e);
+
+            if (WindowState == WindowState.Maximized)
+            {
+                // Constrain to work area so we don't go under the taskbar
+                var screen = System.Windows.Forms.Screen.FromHandle(
+                    new System.Windows.Interop.WindowInteropHelper(this).Handle);
+                var wa = screen.WorkingArea;
+                this.MaxWidth  = wa.Width;
+                this.MaxHeight = wa.Height;
+                // Offset the window to the work area origin
+                this.Left = wa.Left;
+                this.Top  = wa.Top;
+            }
+            else
+            {
+                this.MaxWidth  = double.PositiveInfinity;
+                this.MaxHeight = double.PositiveInfinity;
+            }
         }
 
         private void ShowApp()
