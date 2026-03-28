@@ -94,28 +94,31 @@ namespace EchoX.Models
             {
                 if (_isCapturingShortcut) return "Press keys…";
 
-                if (!string.IsNullOrEmpty(_shortcutMouseButton))
+                var shortcutMouseButton = _shortcutMouseButton;
+                if (!string.IsNullOrEmpty(shortcutMouseButton))
                 {
-                    return _shortcutMouseButton switch
+                    return shortcutMouseButton switch
                     {
                         "XButton1" => "Mouse Button 4",
                         "XButton2" => "Mouse Button 5",
-                        _ => _shortcutMouseButton
+                        _ => shortcutMouseButton!
                     };
                 }
 
-                if (string.IsNullOrEmpty(_shortcutKey))
+                var shortcutKey = _shortcutKey;
+                if (string.IsNullOrEmpty(shortcutKey))
                     return "No shortcut";
 
                 var parts = new System.Collections.Generic.List<string>();
-                if (!string.IsNullOrEmpty(_shortcutModifiers))
+                var shortcutModifiers = _shortcutModifiers;
+                if (!string.IsNullOrEmpty(shortcutModifiers))
                 {
-                    if (_shortcutModifiers.Contains("Control")) parts.Add("Ctrl");
-                    if (_shortcutModifiers.Contains("Alt"))     parts.Add("Alt");
-                    if (_shortcutModifiers.Contains("Shift"))   parts.Add("Shift");
-                    if (_shortcutModifiers.Contains("Windows")) parts.Add("Win");
+                    if (shortcutModifiers!.Contains("Control")) parts.Add("Ctrl");
+                    if (shortcutModifiers.Contains("Alt"))      parts.Add("Alt");
+                    if (shortcutModifiers.Contains("Shift"))    parts.Add("Shift");
+                    if (shortcutModifiers.Contains("Windows"))  parts.Add("Win");
                 }
-                var key = _shortcutKey;
+                var key = shortcutKey!;
                 if (key.StartsWith("D") && key.Length == 2 && char.IsDigit(key[1])) key = key[1].ToString();
                 else if (key.StartsWith("NumPad")) key = "Num" + key.Substring(6);
                 parts.Add(key);

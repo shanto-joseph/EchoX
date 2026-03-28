@@ -28,13 +28,13 @@ namespace EchoX.UI
         public static readonly DependencyProperty ActiveBrushProperty =
             DependencyProperty.Register(nameof(ActiveBrush), typeof(System.Windows.Media.SolidColorBrush), typeof(LevelMeterControl),
                 new FrameworkPropertyMetadata(
-                    new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x23, 0xA5, 0x59)),
+                    new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x53, 0xC0, 0x28)),
                     FrameworkPropertyMetadataOptions.AffectsRender));
 
         public static readonly DependencyProperty InactiveBrushProperty =
             DependencyProperty.Register(nameof(InactiveBrush), typeof(System.Windows.Media.SolidColorBrush), typeof(LevelMeterControl),
                 new FrameworkPropertyMetadata(
-                    new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x3A, 0x3B, 0x45)),
+                    new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x24, 0x27, 0x2C)),
                     FrameworkPropertyMetadataOptions.AffectsRender));
 
         public double Value

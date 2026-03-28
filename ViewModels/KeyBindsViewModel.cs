@@ -8,12 +8,27 @@ namespace EchoX.ViewModels
     {
         private readonly StorageService _storageService;
 
-        // ── Global hotkey backing fields ──
-        private Key _cycleKey = Key.S;
-        private ModifierKeys _cycleMods = ModifierKeys.Control | ModifierKeys.Alt;
-        private Key _muteKey = Key.K;
-        private ModifierKeys _muteMods = ModifierKeys.Control | ModifierKeys.Alt;
+        // ── Defaults ──
+        private static readonly Key DefaultOpenAppKey   = Key.X;
+        private static readonly ModifierKeys DefaultOpenAppMods = ModifierKeys.Shift | ModifierKeys.Alt;
+        private static readonly Key DefaultCycleKey     = Key.S;
+        private static readonly ModifierKeys DefaultCycleMods   = ModifierKeys.Control | ModifierKeys.Alt;
+        private static readonly Key DefaultMuteKey      = Key.K;
+        private static readonly ModifierKeys DefaultMuteMods    = ModifierKeys.Control | ModifierKeys.Alt;
 
+        // ── Backing fields ──
+        private Key _openAppKey = DefaultOpenAppKey;
+        private ModifierKeys _openAppMods = DefaultOpenAppMods;
+        private Key _cycleKey = DefaultCycleKey;
+        private ModifierKeys _cycleMods = DefaultCycleMods;
+        private Key _muteKey = DefaultMuteKey;
+        private ModifierKeys _muteMods = DefaultMuteMods;
+
+        private bool _isOpenAppEnabled = true;
+        private bool _isCycleEnabled   = true;
+        private bool _isMuteEnabled    = true;
+
+        private bool _isCapturingOpenApp;
         private bool _isCapturingCycle;
         private bool _isCapturingMute;
 
@@ -22,22 +37,53 @@ namespace EchoX.ViewModels
             _storageService = storageService;
             LoadSaved();
 
-            StartCaptureCycleCommand = new RelayCommand(() => { IsCapturingCycle = true; IsCapturingMute = false; });
-            StartCaptureMuteCommand  = new RelayCommand(() => { IsCapturingMute = true; IsCapturingCycle = false; });
-            ClearCycleCommand        = new RelayCommand(() => { CycleKey = Key.None; CycleMods = ModifierKeys.None; SaveAll(); RaiseRebind(); });
-            ClearMuteCommand         = new RelayCommand(() => { MuteKey = Key.None; MuteMods = ModifierKeys.None; SaveAll(); RaiseRebind(); });
+            StartCaptureOpenAppCommand = new RelayCommand(() => { IsCapturingOpenApp = true; IsCapturingCycle = false; IsCapturingMute = false; });
+            StartCaptureCycleCommand   = new RelayCommand(() => { IsCapturingCycle = true; IsCapturingMute = false; IsCapturingOpenApp = false; });
+            StartCaptureMuteCommand    = new RelayCommand(() => { IsCapturingMute = true; IsCapturingCycle = false; IsCapturingOpenApp = false; });
+
+            ResetOpenAppCommand = new RelayCommand(() => { OpenAppKey = DefaultOpenAppKey; OpenAppMods = DefaultOpenAppMods; SaveAll(); RaiseRebind(); });
+            ResetCycleCommand   = new RelayCommand(() => { CycleKey = DefaultCycleKey; CycleMods = DefaultCycleMods; SaveAll(); RaiseRebind(); });
+            ResetMuteCommand    = new RelayCommand(() => { MuteKey = DefaultMuteKey; MuteMods = DefaultMuteMods; SaveAll(); RaiseRebind(); });
         }
 
         // ── Commands ──
-        public ICommand StartCaptureCycleCommand { get; }
-        public ICommand StartCaptureMuteCommand  { get; }
-        public ICommand ClearCycleCommand        { get; }
-        public ICommand ClearMuteCommand         { get; }
+        public ICommand StartCaptureOpenAppCommand { get; }
+        public ICommand StartCaptureCycleCommand   { get; }
+        public ICommand StartCaptureMuteCommand    { get; }
+        public ICommand ResetOpenAppCommand        { get; }
+        public ICommand ResetCycleCommand          { get; }
+        public ICommand ResetMuteCommand           { get; }
 
-        // ── Fired when the user finishes capturing a new binding ──
         public event Action? HotkeysChanged;
 
-        // ── Properties ──
+        // ── Enabled toggles ──
+        public bool IsOpenAppEnabled
+        {
+            get => _isOpenAppEnabled;
+            set { if (SetProperty(ref _isOpenAppEnabled, value)) { SaveAll(); RaiseRebind(); } }
+        }
+        public bool IsCycleEnabled
+        {
+            get => _isCycleEnabled;
+            set { if (SetProperty(ref _isCycleEnabled, value)) { SaveAll(); RaiseRebind(); } }
+        }
+        public bool IsMuteEnabled
+        {
+            get => _isMuteEnabled;
+            set { if (SetProperty(ref _isMuteEnabled, value)) { SaveAll(); RaiseRebind(); } }
+        }
+
+        // ── Key/Mod properties ──
+        public Key OpenAppKey
+        {
+            get => _openAppKey;
+            set { if (SetProperty(ref _openAppKey, value)) OnPropertyChanged(nameof(OpenAppDisplay)); }
+        }
+        public ModifierKeys OpenAppMods
+        {
+            get => _openAppMods;
+            set { if (SetProperty(ref _openAppMods, value)) OnPropertyChanged(nameof(OpenAppDisplay)); }
+        }
         public Key CycleKey
         {
             get => _cycleKey;
@@ -59,6 +105,12 @@ namespace EchoX.ViewModels
             set { if (SetProperty(ref _muteMods, value)) OnPropertyChanged(nameof(MuteDisplay)); }
         }
 
+        // ── Capture state ──
+        public bool IsCapturingOpenApp
+        {
+            get => _isCapturingOpenApp;
+            set { SetProperty(ref _isCapturingOpenApp, value); OnPropertyChanged(nameof(OpenAppDisplay)); }
+        }
         public bool IsCapturingCycle
         {
             get => _isCapturingCycle;
@@ -70,40 +122,30 @@ namespace EchoX.ViewModels
             set { SetProperty(ref _isCapturingMute, value); OnPropertyChanged(nameof(MuteDisplay)); }
         }
 
-        public string CycleDisplay => IsCapturingCycle ? "Press keys…" : FormatHotkey(CycleMods, CycleKey);
-        public string MuteDisplay  => IsCapturingMute  ? "Press keys…" : FormatHotkey(MuteMods,  MuteKey);
+        public string OpenAppDisplay => IsCapturingOpenApp ? "Press keys\u2026" : FormatHotkey(OpenAppMods, OpenAppKey);
+        public string CycleDisplay   => IsCapturingCycle   ? "Press keys\u2026" : FormatHotkey(CycleMods,   CycleKey);
+        public string MuteDisplay    => IsCapturingMute    ? "Press keys\u2026" : FormatHotkey(MuteMods,    MuteKey);
 
-        // ── Called from MainWindow on KeyDown when capturing ──
+        // ── Capture ──
         public bool TryCapture(Key key, ModifierKeys mods)
         {
-            // Ignore lone modifier presses
             if (key == Key.LeftCtrl || key == Key.RightCtrl ||
                 key == Key.LeftAlt  || key == Key.RightAlt  ||
                 key == Key.LeftShift|| key == Key.RightShift||
                 key == Key.LWin     || key == Key.RWin)
                 return false;
 
-            if (IsCapturingCycle)
-            {
-                CycleKey = key; CycleMods = mods;
-                IsCapturingCycle = false;
-                SaveAll(); RaiseRebind();
-                return true;
-            }
-            if (IsCapturingMute)
-            {
-                MuteKey = key; MuteMods = mods;
-                IsCapturingMute = false;
-                SaveAll(); RaiseRebind();
-                return true;
-            }
+            if (IsCapturingOpenApp) { OpenAppKey = key; OpenAppMods = mods; IsCapturingOpenApp = false; SaveAll(); RaiseRebind(); return true; }
+            if (IsCapturingCycle)   { CycleKey   = key; CycleMods   = mods; IsCapturingCycle   = false; SaveAll(); RaiseRebind(); return true; }
+            if (IsCapturingMute)    { MuteKey    = key; MuteMods    = mods; IsCapturingMute    = false; SaveAll(); RaiseRebind(); return true; }
             return false;
         }
 
         public void CancelCapture()
         {
-            IsCapturingCycle = false;
-            IsCapturingMute  = false;
+            IsCapturingOpenApp = false;
+            IsCapturingCycle   = false;
+            IsCapturingMute    = false;
         }
 
         // ── Persistence ──
@@ -111,20 +153,30 @@ namespace EchoX.ViewModels
         {
             var s = _storageService.LoadKeyBinds();
             if (s == null) return;
-            if (Enum.TryParse<Key>(s.CycleKey, out var ck))           CycleKey  = ck;
-            if (Enum.TryParse<ModifierKeys>(s.CycleMods, out var cm)) CycleMods = cm;
-            if (Enum.TryParse<Key>(s.MuteKey, out var mk))            MuteKey   = mk;
-            if (Enum.TryParse<ModifierKeys>(s.MuteMods, out var mm))  MuteMods  = mm;
+            if (Enum.TryParse<Key>(s.OpenAppKey, out var ok))           OpenAppKey  = ok;
+            if (Enum.TryParse<ModifierKeys>(s.OpenAppMods, out var om)) OpenAppMods = om;
+            if (Enum.TryParse<Key>(s.CycleKey, out var ck))             CycleKey    = ck;
+            if (Enum.TryParse<ModifierKeys>(s.CycleMods, out var cm))   CycleMods   = cm;
+            if (Enum.TryParse<Key>(s.MuteKey, out var mk))              MuteKey     = mk;
+            if (Enum.TryParse<ModifierKeys>(s.MuteMods, out var mm))    MuteMods    = mm;
+            _isOpenAppEnabled = s.IsOpenAppEnabled;
+            _isCycleEnabled   = s.IsCycleEnabled;
+            _isMuteEnabled    = s.IsMuteEnabled;
         }
 
         public void SaveAll()
         {
             _storageService.SaveKeyBinds(new Models.KeyBindsSettings
             {
-                CycleKey  = CycleKey.ToString(),
-                CycleMods = CycleMods.ToString(),
-                MuteKey   = MuteKey.ToString(),
-                MuteMods  = MuteMods.ToString()
+                OpenAppKey       = OpenAppKey.ToString(),
+                OpenAppMods      = OpenAppMods.ToString(),
+                CycleKey         = CycleKey.ToString(),
+                CycleMods        = CycleMods.ToString(),
+                MuteKey          = MuteKey.ToString(),
+                MuteMods         = MuteMods.ToString(),
+                IsOpenAppEnabled = _isOpenAppEnabled,
+                IsCycleEnabled   = _isCycleEnabled,
+                IsMuteEnabled    = _isMuteEnabled,
             });
         }
 
@@ -137,22 +189,19 @@ namespace EchoX.ViewModels
             if (mods.HasFlag(ModifierKeys.Control)) parts.Add("Ctrl");
             if (mods.HasFlag(ModifierKeys.Alt))     parts.Add("Alt");
             if (mods.HasFlag(ModifierKeys.Shift))   parts.Add("Shift");
-            if (mods.HasFlag(ModifierKeys.Windows))  parts.Add("Win");
+            if (mods.HasFlag(ModifierKeys.Windows)) parts.Add("Win");
             parts.Add(KeyToLabel(key));
             return string.Join(" + ", parts);
         }
 
-        private static string KeyToLabel(Key key)
+        private static string KeyToLabel(Key key) => key switch
         {
-            return key switch
-            {
-                Key.D0 => "0", Key.D1 => "1", Key.D2 => "2", Key.D3 => "3",
-                Key.D4 => "4", Key.D5 => "5", Key.D6 => "6", Key.D7 => "7",
-                Key.D8 => "8", Key.D9 => "9",
-                Key.OemComma => ",", Key.OemPeriod => ".", Key.OemMinus => "-",
-                Key.OemPlus => "=", Key.Space => "Space",
-                _ => key.ToString()
-            };
-        }
+            Key.D0 => "0", Key.D1 => "1", Key.D2 => "2", Key.D3 => "3",
+            Key.D4 => "4", Key.D5 => "5", Key.D6 => "6", Key.D7 => "7",
+            Key.D8 => "8", Key.D9 => "9",
+            Key.OemComma => ",", Key.OemPeriod => ".", Key.OemMinus => "-",
+            Key.OemPlus => "=", Key.Space => "Space",
+            _ => key.ToString()
+        };
     }
 }
