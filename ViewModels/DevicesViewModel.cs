@@ -231,8 +231,12 @@ namespace EchoX.ViewModels
             {
                 _audioEngine.MicTestPeakUpdated -= OnMicTestPeakUpdated;
                 _audioEngine.MicTestPeakUpdated += OnMicTestPeakUpdated;
-                _audioEngine.StartMicTest(CurrentInputDevice.Id, IsMicLoopback);
-                
+
+                // Run the blocking audio driver init off the UI thread
+                var deviceId = CurrentInputDevice.Id;
+                var loopback = IsMicLoopback;
+                System.Threading.Tasks.Task.Run(() => _audioEngine.StartMicTest(deviceId, loopback));
+
                 // Initialize smoothing timer for "analog-like" meter
                 _smoothingTimer?.Stop();
                 _smoothingTimer = new System.Windows.Threading.DispatcherTimer(System.Windows.Threading.DispatcherPriority.Render)
@@ -241,13 +245,11 @@ namespace EchoX.ViewModels
                 };
                 _smoothingTimer.Tick += (s, e) =>
                 {
-                    // Smoothly interpolate towards target
                     if (_targetPeak > _currentPeak)
-                        _currentPeak = (_currentPeak * 0.4) + (_targetPeak * 0.6); // Fast rise
+                        _currentPeak = (_currentPeak * 0.4) + (_targetPeak * 0.6);
                     else
-                        _currentPeak = (_currentPeak * 0.85); // Natural decay
+                        _currentPeak = (_currentPeak * 0.85);
 
-                    // Use a non-linear scale (Power 0.7) to make the meter feel more alive at lower volumes
                     MicTestLevel = Math.Min(100, Math.Pow(_currentPeak, 0.7) * 100.0);
                 };
                 _smoothingTimer.Start();
@@ -256,7 +258,7 @@ namespace EchoX.ViewModels
             {
                 _smoothingTimer?.Stop();
                 _audioEngine.MicTestPeakUpdated -= OnMicTestPeakUpdated;
-                _audioEngine.StopMicTest();
+                System.Threading.Tasks.Task.Run(() => _audioEngine.StopMicTest());
                 MicTestLevel = 0;
                 _targetPeak = 0;
                 _currentPeak = 0;

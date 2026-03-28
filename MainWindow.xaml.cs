@@ -179,14 +179,17 @@ namespace EchoX
 
         private void RegisterGlobalHotkeys(ViewModels.KeyBindsViewModel kb)
         {
-            // Cycle profiles
-            if (kb.CycleKey != System.Windows.Input.Key.None)
+            if (kb.IsOpenAppEnabled && kb.OpenAppKey != System.Windows.Input.Key.None)
+                TryRegisterHotkey("OpenApp", kb.OpenAppKey, kb.OpenAppMods, OpenApp);
+            else
+                try { HotkeyManager.Current.Remove("OpenApp"); } catch { }
+
+            if (kb.IsCycleEnabled && kb.CycleKey != System.Windows.Input.Key.None)
                 TryRegisterHotkey("CycleAudio", kb.CycleKey, kb.CycleMods, CycleProfiles);
             else
                 try { HotkeyManager.Current.Remove("CycleAudio"); } catch { }
 
-            // Toggle mute
-            if (kb.MuteKey != System.Windows.Input.Key.None)
+            if (kb.IsMuteEnabled && kb.MuteKey != System.Windows.Input.Key.None)
                 TryRegisterHotkey("MuteMic", kb.MuteKey, kb.MuteMods, ToggleMicMute);
             else
                 try { HotkeyManager.Current.Remove("MuteMic"); } catch { }
@@ -287,6 +290,12 @@ namespace EchoX
         private void ToggleMicMute(object sender, HotkeyEventArgs e)
         {
             _viewModel.ProfilesViewModel.ToggleMicMute();
+            e.Handled = true;
+        }
+
+        private void OpenApp(object sender, HotkeyEventArgs e)
+        {
+            ShowApp();
             e.Handled = true;
         }
 
@@ -648,6 +657,14 @@ namespace EchoX
             var kb = _viewModel.KeyBindsViewModel;
             if (kb.IsCapturingMute) { kb.CancelCapture(); StopCapturingGlobal(); return; }
             kb.StartCaptureMuteCommand.Execute(null);
+            StartCapturingGlobal();
+        }
+
+        private void OpenAppCaptureBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var kb = _viewModel.KeyBindsViewModel;
+            if (kb.IsCapturingOpenApp) { kb.CancelCapture(); StopCapturingGlobal(); return; }
+            kb.StartCaptureOpenAppCommand.Execute(null);
             StartCapturingGlobal();
         }
 
