@@ -1,6 +1,6 @@
 bin/
 obj/
-docs/
+
 temp_build_verify/
 
 .vs/
@@ -23,3 +23,4 @@ _ReSharper*/
 
 .idea/
 .vscode/
+plans

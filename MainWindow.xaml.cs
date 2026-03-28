@@ -215,6 +215,13 @@ namespace EchoX
             {
                 this.MaxWidth  = double.PositiveInfinity;
                 this.MaxHeight = double.PositiveInfinity;
+
+                // Center on screen when restoring from maximized
+                var screen = System.Windows.Forms.Screen.FromHandle(
+                    new System.Windows.Interop.WindowInteropHelper(this).Handle);
+                var wa = screen.WorkingArea;
+                this.Left = wa.Left + (wa.Width  - this.Width)  / 2;
+                this.Top  = wa.Top  + (wa.Height - this.Height) / 2;
             }
         }
 
