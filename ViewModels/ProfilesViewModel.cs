@@ -1,5 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Linq;
 using System.Windows.Input;
 using EchoX.Models;
@@ -181,6 +182,10 @@ namespace EchoX.ViewModels
         public ICommand ActivateCommand { get; }
         public ICommand EditCommand { get; }
         public ICommand DeleteCommand { get; }
+        public ICommand NewCommand { get; }
+
+        /// <summary>Raised when the user wants to edit a profile from an external tab — subscriber should navigate to Profiles tab.</summary>
+        public event Action<AudioProfile>? EditAndNavigateRequested;
 
         private bool _isActivating = false;
         public bool IsActivating => _isActivating;
@@ -191,19 +196,40 @@ namespace EchoX.ViewModels
             get => _activeProfile;
             set
             {
-                if (_activeProfile != null) _activeProfile.IsActive = false;
+                if (_activeProfile != null)
+                {
+                    _activeProfile.IsActive = false;
+                    _activeProfile.PropertyChanged -= ActiveProfile_PropertyChanged;
+                }
                 if (SetProperty(ref _activeProfile, value) && value != null && !_isActivating)
                 {
+                    value.PropertyChanged += ActiveProfile_PropertyChanged;
                     foreach (var p in Profiles)
                         p.IsActive = (p.Id == _activeProfile?.Id);
                     ActivateProfile(value);
                     OnPropertyChanged(nameof(ActiveShortcutDisplay));
+                }
+                else if (value != null)
+                {
+                    value.PropertyChanged -= ActiveProfile_PropertyChanged;
+                    value.PropertyChanged += ActiveProfile_PropertyChanged;
                 }
                 else if (value == null)
                 {
                     foreach (var p in Profiles) p.IsActive = false;
                     OnPropertyChanged(nameof(ActiveShortcutDisplay));
                 }
+            }
+        }
+
+        private void ActiveProfile_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(AudioProfile.ShortcutKey) ||
+                e.PropertyName == nameof(AudioProfile.ShortcutModifiers) ||
+                e.PropertyName == nameof(AudioProfile.ShortcutMouseButton) ||
+                e.PropertyName == nameof(AudioProfile.ShortcutDisplay))
+            {
+                OnPropertyChanged(nameof(ActiveShortcutDisplay));
             }
         }
 
@@ -226,8 +252,6 @@ namespace EchoX.ViewModels
             get => _isEditorVisible;
             set => SetProperty(ref _isEditorVisible, value);
         }
-
-        public ICommand NewCommand { get; }
 
         // ── Selected profile for the detail/editor panel ─────────────────────
         private AudioProfile? _selectedProfile;
@@ -525,6 +549,11 @@ namespace EchoX.ViewModels
             _currentProfileIndex = -1;
         }
 
+        public void CancelEditSession()
+        {
+            CancelEdit();
+        }
+
         private void EditProfile(AudioProfile profile)
         {
             SelectedProfile = profile;
@@ -572,6 +601,58 @@ namespace EchoX.ViewModels
             SelectedOutputDevice = OutputDevices.FirstOrDefault(d => d.Id == profile.OutputDeviceId);
             SelectedCallInputDevice = InputDevices.FirstOrDefault(d => d.Id == profile.CallInputDeviceId);
             SelectedCallOutputDevice = OutputDevices.FirstOrDefault(d => d.Id == profile.CallOutputDeviceId);
+        }
+
+        /// <summary>Called from Key Binds tab — opens the profile editor and asks MainWindow to navigate to Profiles tab.</summary>
+        public void EditAndNavigate(AudioProfile profile)
+        {
+            EditProfile(profile);
+            EditAndNavigateRequested?.Invoke(profile);
+        }
+
+        /// <summary>Saves only the shortcut fields for a profile (called from Key Binds inline capture).</summary>
+        public void SaveProfileShortcut(AudioProfile profile,
+            System.Windows.Input.Key? key,
+            System.Windows.Input.ModifierKeys mods,
+            string? mouseButton)
+        {
+            profile.ShortcutKey         = key.HasValue ? key.Value.ToString() : null;
+            profile.ShortcutModifiers   = key.HasValue ? mods.ToString() : null;
+            profile.ShortcutMouseButton = mouseButton;
+            profile.IsCapturingShortcut = false;
+
+            var profiles = _storageService.LoadProfiles();
+            var idx = profiles.FindIndex(p => p.Id == profile.Id);
+            if (idx >= 0)
+            {
+                profiles[idx].ShortcutKey         = profile.ShortcutKey;
+                profiles[idx].ShortcutModifiers   = profile.ShortcutModifiers;
+                profiles[idx].ShortcutMouseButton = profile.ShortcutMouseButton;
+                _storageService.SaveProfiles(profiles);
+            }
+
+            UnregisterProfileHotkey(profile);
+            RegisterProfileHotkey(profile);
+        }
+
+        /// <summary>Clears the shortcut for a profile (called from Key Binds clear button).</summary>
+        public void ClearProfileShortcut(AudioProfile profile)
+        {
+            UnregisterProfileHotkey(profile);
+            profile.ShortcutKey         = null;
+            profile.ShortcutModifiers   = null;
+            profile.ShortcutMouseButton = null;
+            profile.IsCapturingShortcut = false;
+
+            var profiles = _storageService.LoadProfiles();
+            var idx = profiles.FindIndex(p => p.Id == profile.Id);
+            if (idx >= 0)
+            {
+                profiles[idx].ShortcutKey         = null;
+                profiles[idx].ShortcutModifiers   = null;
+                profiles[idx].ShortcutMouseButton = null;
+                _storageService.SaveProfiles(profiles);
+            }
         }
 
         private void ActivateProfile(AudioProfile profile)
