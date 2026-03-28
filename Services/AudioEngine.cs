@@ -308,18 +308,36 @@ namespace EchoX.Services
             try
             {
                 if (_testTonePlayer != null)
-                {
-                    _testTonePlayer.Play(); 
-                }
+                    _testTonePlayer.Play();
                 else
-                {
                     SystemSounds.Asterisk.Play();
-                }
             }
-            catch
+            catch { }
+        }
+
+        public void PlayNotificationSound()
+        {
+            System.Threading.Tasks.Task.Run(() =>
             {
-                SystemSounds.Beep.Play();
-            }
+                try
+                {
+                    string wavPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "audio.wav");
+                    if (System.IO.File.Exists(wavPath))
+                    {
+                        using var reader = new AudioFileReader(wavPath);
+                        using var output = new WaveOutEvent { DesiredLatency = 100 };
+                        output.Init(reader);
+                        output.Play();
+                        while (output.PlaybackState == PlaybackState.Playing)
+                            System.Threading.Thread.Sleep(10);
+                    }
+                    else
+                    {
+                        SystemSounds.Asterisk.Play();
+                    }
+                }
+                catch { SystemSounds.Asterisk.Play(); }
+            });
         }
     }
 }
