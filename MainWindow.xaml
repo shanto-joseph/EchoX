@@ -543,7 +543,7 @@
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="&#xE92E;" FontFamily="Segoe MDL2 Assets" FontSize="13" Margin="0,0,10,0"
                                        Foreground="{StaticResource TextMid}"/>
-                            <TextBlock Text="Shortcuts" FontSize="13" Foreground="{StaticResource TextMid}"/>
+                            <TextBlock Text="Key Binds" FontSize="13" Foreground="{StaticResource TextMid}"/>
                         </StackPanel>
                     </Button>
                     <Button x:Name="BtnNav3" Tag="Settings" Click="SidebarButton_Click"
@@ -569,7 +569,8 @@
 
         <!-- ══════════════════════════════════ CONTENT -->
         <TabControl x:Name="MainTabControl" Grid.Column="1"
-                    Background="{StaticResource BgBase}" BorderThickness="0" SelectedIndex="0">
+                    Background="{StaticResource BgBase}" BorderThickness="0" SelectedIndex="0"
+                    SelectionChanged="MainTabControl_SelectionChanged">
             <TabControl.ItemContainerStyle>
                 <Style TargetType="TabItem">
                     <Setter Property="Visibility" Value="Collapsed"/>
@@ -1631,7 +1632,9 @@
                                                 </StackPanel>
 
                                                 <!-- Shortcut display pill -->
-                                                <Border Background="{StaticResource BgRaised}" CornerRadius="8" Padding="12,10" Margin="0,0,0,10">
+                                                <Border Background="{StaticResource BgRaised}" CornerRadius="10"
+                                                        BorderBrush="{StaticResource Border}" BorderThickness="1"
+                                                        Padding="12,10" Margin="0,0,0,10">
                                                     <Grid>
                                                         <Grid.ColumnDefinitions>
                                                             <ColumnDefinition Width="*"/>
@@ -1659,7 +1662,7 @@
                                                             </TextBlock>
                                                             <!-- Recorded value as a key badge -->
                                                             <Border Background="{StaticResource BgCard}" BorderBrush="{StaticResource Border}"
-                                                                    BorderThickness="1" CornerRadius="5" Padding="10,4"
+                                                                    BorderThickness="1" CornerRadius="7" Padding="12,6"
                                                                     HorizontalAlignment="Left">
                                                                 <Border.Style>
                                                                     <Style TargetType="Border">
@@ -1676,13 +1679,15 @@
                                                                 </Border.Style>
                                                                 <TextBlock Text="{Binding ProfilesViewModel.ShortcutText}"
                                                                            Foreground="{StaticResource TextHi}"
-                                                                           FontFamily="Consolas" FontSize="13" FontWeight="SemiBold"/>
+                                                                           FontFamily="Consolas" FontSize="12" FontWeight="SemiBold"/>
                                                             </Border>
                                                         </StackPanel>
 
                                                         <!-- Clear link — only when shortcut is set -->
-                                                        <Button Grid.Column="1" Background="Transparent" BorderThickness="0"
-                                                                Cursor="Hand" Click="ClearShortcut_Click" VerticalAlignment="Center">
+                                                        <Button Grid.Column="1" Width="28" Height="28" Padding="0"
+                                                                Background="Transparent" BorderThickness="0"
+                                                                Cursor="Hand" Click="ClearShortcut_Click"
+                                                                VerticalAlignment="Center" ToolTip="Clear shortcut">
                                                             <Button.Style>
                                                                 <Style TargetType="Button">
                                                                     <Setter Property="Visibility" Value="Visible"/>
@@ -1698,10 +1703,17 @@
                                                             </Button.Style>
                                                             <Button.Template>
                                                                 <ControlTemplate TargetType="Button">
-                                                                    <TextBlock x:Name="T" Text="Remove" Foreground="{StaticResource Red}" FontSize="11"/>
+                                                                    <Border Background="Transparent" CornerRadius="6">
+                                                                        <TextBlock x:Name="T" Text="&#xE711;"
+                                                                                   FontFamily="Segoe MDL2 Assets"
+                                                                                   Foreground="{StaticResource TextLow}"
+                                                                                   FontSize="11"
+                                                                                   HorizontalAlignment="Center"
+                                                                                   VerticalAlignment="Center"/>
+                                                                    </Border>
                                                                     <ControlTemplate.Triggers>
                                                                         <Trigger Property="IsMouseOver" Value="True">
-                                                                            <Setter TargetName="T" Property="TextDecorations" Value="Underline"/>
+                                                                            <Setter TargetName="T" Property="Foreground" Value="#EF4444"/>
                                                                         </Trigger>
                                                                     </ControlTemplate.Triggers>
                                                                 </ControlTemplate>
@@ -1715,7 +1727,7 @@
                                                         Click="RecordShortcut_Click">
                                                     <Button.Template>
                                                         <ControlTemplate TargetType="Button">
-                                                            <Border x:Name="Bg" Background="Transparent"
+                                                            <Border x:Name="Bg" Background="{StaticResource BgRaised}"
                                                                     BorderBrush="{StaticResource Border}" BorderThickness="1"
                                                                     CornerRadius="7">
                                                                 <Grid>
@@ -1725,7 +1737,7 @@
                                                                         <TextBlock Text="&#xE7C8;" FontFamily="Segoe MDL2 Assets"
                                                                                    FontSize="11" Foreground="{StaticResource TextMid}"
                                                                                    Margin="0,0,7,0" VerticalAlignment="Center"/>
-                                                                        <TextBlock Foreground="{StaticResource TextMid}" FontSize="12" VerticalAlignment="Center">
+                                                                        <TextBlock Foreground="{StaticResource TextHi}" FontSize="12" VerticalAlignment="Center">
                                                                             <TextBlock.Style>
                                                                                 <Style TargetType="TextBlock">
                                                                                     <Setter Property="Text" Value="Change shortcut"/>
@@ -1763,7 +1775,7 @@
                                                             <ControlTemplate.Triggers>
                                                                 <Trigger Property="IsMouseOver" Value="True">
                                                                     <Setter TargetName="Bg" Property="BorderBrush" Value="{StaticResource Accent}"/>
-                                                                    <Setter TargetName="Bg" Property="Background" Value="{StaticResource BgRaised}"/>
+                                                                    <Setter TargetName="Bg" Property="Background" Value="{StaticResource BgCard}"/>
                                                                 </Trigger>
                                                             </ControlTemplate.Triggers>
                                                         </ControlTemplate>
@@ -1800,27 +1812,35 @@
             </TabItem>
 
 
-            <!-- ──────────────────────── SHORTCUTS TAB -->
+            <!-- ──────────────────────── KEY BINDS TAB -->
             <TabItem Header="Shortcuts">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <StackPanel Margin="28,24,28,24">
-                    <TextBlock Text="Shortcuts" Foreground="{StaticResource TextHi}"
+                    <TextBlock Text="Key Binds" Foreground="{StaticResource TextHi}"
                                FontSize="20" FontWeight="SemiBold"/>
                     <TextBlock Text="Global hotkeys — work even when EchoX is in the tray"
                                Foreground="{StaticResource TextMid}" FontSize="12" Margin="0,3,0,20"/>
 
-                    <Border Style="{StaticResource Card}" Padding="0">
+                    <!-- ── Global Actions ── -->
+                    <TextBlock Text="GLOBAL ACTIONS" Foreground="{StaticResource TextLow}"
+                               FontSize="10" FontWeight="SemiBold" Margin="0,0,0,8"/>
+
+                    <Border Style="{StaticResource Card}" Padding="0" Margin="0,0,0,20">
                         <StackPanel>
-                            <Border Padding="18,16" BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1">
+
+                            <!-- Cycle Profiles row -->
+                            <Border Padding="18,14" BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="8"/>
+                                        <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <Border Grid.Column="0" Background="{StaticResource AccentLow}"
-                                            CornerRadius="8" Width="36" Height="36" Margin="0,0,14,0">
+                                    <Border Grid.Column="0" Width="36" Height="36" Margin="0,0,14,0">
                                         <TextBlock Text="&#xE81E;" FontFamily="Segoe MDL2 Assets"
-                                                   Foreground="{StaticResource Accent}" FontSize="16"
+                                                   Foreground="{StaticResource TextMid}" FontSize="16"
                                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                     </Border>
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
@@ -1829,25 +1849,91 @@
                                         <TextBlock Text="Switch to the next saved audio profile"
                                                    Foreground="{StaticResource TextMid}" FontSize="12"/>
                                     </StackPanel>
-                                    <Border Grid.Column="2" Background="{StaticResource BgRaised}"
-                                            BorderBrush="{StaticResource Border}" BorderThickness="1"
-                                            CornerRadius="7" Padding="12,6">
-                                        <TextBlock Text="Ctrl + Alt + S" Foreground="{StaticResource TextHi}"
+
+                                    <!-- Key badge / capture button -->
+                                    <Button Grid.Column="2" x:Name="CycleCaptureBtn"
+                                            Cursor="Hand" VerticalAlignment="Center"
+                                            Click="CycleCaptureBtn_Click">
+                                        <Button.Style>
+                                            <Style TargetType="Button">
+                                                <Setter Property="Background" Value="{StaticResource BgRaised}"/>
+                                                <Setter Property="BorderBrush" Value="{StaticResource Border}"/>
+                                                <Setter Property="BorderThickness" Value="1"/>
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="Button">
+                                                            <Border x:Name="Bg"
+                                                                    Background="{TemplateBinding Background}"
+                                                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                                                    CornerRadius="7" Padding="12,6">
+                                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                            </Border>
+                                                            <ControlTemplate.Triggers>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter TargetName="Bg" Property="BorderBrush" Value="{StaticResource Accent}"/>
+                                                                </Trigger>
+                                                            </ControlTemplate.Triggers>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding KeyBindsViewModel.IsCapturingCycle}" Value="True">
+                                                        <Setter Property="Background" Value="{StaticResource AccentLow}"/>
+                                                        <Setter Property="BorderBrush" Value="{StaticResource Accent}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                        <TextBlock Text="{Binding KeyBindsViewModel.CycleDisplay}"
+                                                   Foreground="{StaticResource TextHi}"
                                                    FontFamily="Consolas" FontSize="12"/>
-                                    </Border>
+                                    </Button>
+
+                                    <!-- Clear button -->
+                                    <Button Grid.Column="4" Width="28" Height="28" Padding="0"
+                                            Background="Transparent" BorderThickness="0" Cursor="Hand"
+                                            Command="{Binding KeyBindsViewModel.ClearCycleCommand}"
+                                            ToolTip="Clear shortcut">
+                                        <Button.Style>
+                                            <Style TargetType="Button">
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="Button">
+                                                            <Border Background="Transparent" CornerRadius="6">
+                                                                <TextBlock x:Name="Ico" Text="&#xE711;"
+                                                                           FontFamily="Segoe MDL2 Assets"
+                                                                           Foreground="{StaticResource TextLow}"
+                                                                           FontSize="11"
+                                                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                            </Border>
+                                                            <ControlTemplate.Triggers>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter TargetName="Ico" Property="Foreground" Value="#EF4444"/>
+                                                                </Trigger>
+                                                            </ControlTemplate.Triggers>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
                                 </Grid>
                             </Border>
-                            <Border Padding="18,16">
+
+                            <!-- Toggle Mic Mute row -->
+                            <Border Padding="18,14">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="8"/>
+                                        <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <Border Grid.Column="0" Background="#3B1A1A"
-                                            CornerRadius="8" Width="36" Height="36" Margin="0,0,14,0">
+                                    <Border Grid.Column="0" Width="36" Height="36" Margin="0,0,14,0">
                                         <TextBlock Text="&#xE720;" FontFamily="Segoe MDL2 Assets"
-                                                   Foreground="{StaticResource Red}" FontSize="16"
+                                                   Foreground="{StaticResource TextMid}" FontSize="16"
                                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                     </Border>
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
@@ -1856,17 +1942,230 @@
                                         <TextBlock Text="Mute or unmute the default microphone"
                                                    Foreground="{StaticResource TextMid}" FontSize="12"/>
                                     </StackPanel>
-                                    <Border Grid.Column="2" Background="{StaticResource BgRaised}"
-                                            BorderBrush="{StaticResource Border}" BorderThickness="1"
-                                            CornerRadius="7" Padding="12,6">
-                                        <TextBlock Text="Ctrl + Alt + K" Foreground="{StaticResource TextHi}"
+
+                                    <Button Grid.Column="2" x:Name="MuteCaptureBtn"
+                                            Cursor="Hand" VerticalAlignment="Center"
+                                            Click="MuteCaptureBtn_Click">
+                                        <Button.Style>
+                                            <Style TargetType="Button">
+                                                <Setter Property="Background" Value="{StaticResource BgRaised}"/>
+                                                <Setter Property="BorderBrush" Value="{StaticResource Border}"/>
+                                                <Setter Property="BorderThickness" Value="1"/>
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="Button">
+                                                            <Border x:Name="Bg"
+                                                                    Background="{TemplateBinding Background}"
+                                                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                                                    CornerRadius="7" Padding="12,6">
+                                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                            </Border>
+                                                            <ControlTemplate.Triggers>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter TargetName="Bg" Property="BorderBrush" Value="{StaticResource Accent}"/>
+                                                                </Trigger>
+                                                            </ControlTemplate.Triggers>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding KeyBindsViewModel.IsCapturingMute}" Value="True">
+                                                        <Setter Property="Background" Value="{StaticResource AccentLow}"/>
+                                                        <Setter Property="BorderBrush" Value="{StaticResource Accent}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                        <TextBlock Text="{Binding KeyBindsViewModel.MuteDisplay}"
+                                                   Foreground="{StaticResource TextHi}"
                                                    FontFamily="Consolas" FontSize="12"/>
-                                    </Border>
+                                    </Button>
+
+                                    <Button Grid.Column="4" Width="28" Height="28" Padding="0"
+                                            Background="Transparent" BorderThickness="0" Cursor="Hand"
+                                            Command="{Binding KeyBindsViewModel.ClearMuteCommand}"
+                                            ToolTip="Clear shortcut">
+                                        <Button.Style>
+                                            <Style TargetType="Button">
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="Button">
+                                                            <Border Background="Transparent" CornerRadius="6">
+                                                                <TextBlock x:Name="Ico" Text="&#xE711;"
+                                                                           FontFamily="Segoe MDL2 Assets"
+                                                                           Foreground="{StaticResource TextLow}"
+                                                                           FontSize="11"
+                                                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                            </Border>
+                                                            <ControlTemplate.Triggers>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter TargetName="Ico" Property="Foreground" Value="#EF4444"/>
+                                                                </Trigger>
+                                                            </ControlTemplate.Triggers>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
                                 </Grid>
                             </Border>
+
                         </StackPanel>
                     </Border>
+
+                    <!-- ── Profile Shortcuts ── -->
+                    <TextBlock Text="PROFILE SHORTCUTS" Foreground="{StaticResource TextLow}"
+                               FontSize="10" FontWeight="SemiBold" Margin="0,0,0,8"/>
+
+                    <Border Style="{StaticResource Card}" Padding="0">
+                        <StackPanel>
+                            <!-- Empty state -->
+                            <StackPanel HorizontalAlignment="Center" Margin="0,20"
+                                        Visibility="{Binding ProfilesViewModel.IsEmpty, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <TextBlock Text="No profiles yet" Foreground="{StaticResource TextLow}"
+                                           FontSize="13" HorizontalAlignment="Center"/>
+                                <TextBlock Text="Create profiles to assign shortcuts to them"
+                                           Foreground="{StaticResource TextLow}" FontSize="12"
+                                           HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                            </StackPanel>
+
+                            <!-- Profile list -->
+                            <ItemsControl ItemsSource="{Binding ProfilesViewModel.Profiles}"
+                                          Visibility="{Binding ProfilesViewModel.IsEmpty, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Padding="18,13"
+                                                BorderBrush="{StaticResource Border}"
+                                                BorderThickness="0,0,0,1">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=ContentPresenter}, Path=Content}"
+                                                                     Value="{x:Null}">
+                                                            <Setter Property="BorderThickness" Value="0"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="8"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <!-- Active dot -->
+                                                <Border Grid.Column="0" Width="8" Height="8" CornerRadius="4"
+                                                        Margin="0,0,12,0" VerticalAlignment="Center">
+                                                    <Border.Style>
+                                                        <Style TargetType="Border">
+                                                            <Setter Property="Background" Value="{StaticResource BgRaised}"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                                                    <Setter Property="Background" Value="{StaticResource Accent}"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Border.Style>
+                                                </Border>
+
+                                                <TextBlock Grid.Column="1" Text="{Binding Name}"
+                                                           Foreground="{StaticResource TextHi}"
+                                                           FontSize="13" FontWeight="Medium"
+                                                           VerticalAlignment="Center"/>
+
+                                                <!-- Shortcut badge (clickable to capture) -->
+                                                <Button Grid.Column="2" Cursor="Hand" VerticalAlignment="Center"
+                                                        Tag="{Binding}" Click="KeyBindsEditProfile_Click">
+                                                    <Button.Style>
+                                                        <Style TargetType="Button">
+                                                            <Setter Property="Background" Value="{StaticResource BgRaised}"/>
+                                                            <Setter Property="BorderBrush" Value="{StaticResource Border}"/>
+                                                            <Setter Property="BorderThickness" Value="1"/>
+                                                            <Setter Property="Template">
+                                                                <Setter.Value>
+                                                                    <ControlTemplate TargetType="Button">
+                                                                        <Border x:Name="Bg"
+                                                                                Background="{TemplateBinding Background}"
+                                                                                BorderBrush="{TemplateBinding BorderBrush}"
+                                                                                BorderThickness="{TemplateBinding BorderThickness}"
+                                                                                CornerRadius="7" Padding="12,6">
+                                                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                                        </Border>
+                                                                        <ControlTemplate.Triggers>
+                                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                                <Setter TargetName="Bg" Property="BorderBrush" Value="{StaticResource Accent}"/>
+                                                                            </Trigger>
+                                                                        </ControlTemplate.Triggers>
+                                                                    </ControlTemplate>
+                                                                </Setter.Value>
+                                                            </Setter>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsCapturingShortcut}" Value="True">
+                                                                    <Setter Property="Background" Value="{StaticResource AccentLow}"/>
+                                                                    <Setter Property="BorderBrush" Value="{StaticResource Accent}"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Button.Style>
+                                                    <TextBlock Text="{Binding ShortcutDisplay}"
+                                                               Foreground="{StaticResource TextHi}"
+                                                               FontFamily="Consolas" FontSize="12">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Foreground" Value="{StaticResource TextHi}"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding ShortcutDisplay}" Value="No shortcut">
+                                                                        <Setter Property="Foreground" Value="{StaticResource TextLow}"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                </Button>
+
+                                                <!-- Clear button -->
+                                                <Button Grid.Column="4" Width="28" Height="28" Padding="0"
+                                                        Background="Transparent" BorderThickness="0" Cursor="Hand"
+                                                        Tag="{Binding}" Click="KeyBindsClearProfile_Click"
+                                                        ToolTip="Clear shortcut">
+                                                    <Button.Style>
+                                                        <Style TargetType="Button">
+                                                            <Setter Property="Template">
+                                                                <Setter.Value>
+                                                                    <ControlTemplate TargetType="Button">
+                                                                        <Border Background="Transparent" CornerRadius="6">
+                                                                            <TextBlock x:Name="Ico" Text="&#xE711;"
+                                                                                       FontFamily="Segoe MDL2 Assets"
+                                                                                       Foreground="{StaticResource TextLow}"
+                                                                                       FontSize="11"
+                                                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                                        </Border>
+                                                                        <ControlTemplate.Triggers>
+                                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                                <Setter TargetName="Ico" Property="Foreground" Value="#EF4444"/>
+                                                                            </Trigger>
+                                                                        </ControlTemplate.Triggers>
+                                                                    </ControlTemplate>
+                                                                </Setter.Value>
+                                                            </Setter>
+                                                        </Style>
+                                                    </Button.Style>
+                                                </Button>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+
                 </StackPanel>
+                </ScrollViewer>
             </TabItem>
 
             <!-- ──────────────────────── SETTINGS TAB -->

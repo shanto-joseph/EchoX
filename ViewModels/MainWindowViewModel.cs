@@ -24,6 +24,7 @@ namespace EchoX.ViewModels
         public DevicesViewModel DevicesViewModel { get; }
         public SettingsViewModel SettingsViewModel { get; }
         public AboutViewModel AboutViewModel { get; }
+        public KeyBindsViewModel KeyBindsViewModel { get; }
 
         public MainWindowViewModel()
         {
@@ -32,10 +33,11 @@ namespace EchoX.ViewModels
             _storageService = new StorageService();
 
             // Pass shared services to child ViewModels
-            ProfilesViewModel = new ProfilesViewModel(this, AudioEngine, _storageService);
-            DevicesViewModel = new DevicesViewModel(this, AudioEngine, _storageService);
-            SettingsViewModel = new SettingsViewModel();
-            AboutViewModel = new AboutViewModel();
+            ProfilesViewModel  = new ProfilesViewModel(this, AudioEngine, _storageService);
+            DevicesViewModel   = new DevicesViewModel(this, AudioEngine, _storageService);
+            SettingsViewModel  = new SettingsViewModel();
+            AboutViewModel     = new AboutViewModel();
+            KeyBindsViewModel  = new KeyBindsViewModel(_storageService);
         }
 
         public void NotifyTray(string title, string message)

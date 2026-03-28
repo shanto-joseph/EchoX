@@ -27,6 +27,7 @@ namespace EchoX
         private NotifyIcon _trayIcon = null!;
         private Icon? _activeIcon;
         private Icon? _mutedIcon;
+        private int _lastSelectedTabIndex = 0;
 
         [DllImport("user32.dll", CharSet = CharSet.Auto)]
         private static extern bool DestroyIcon(IntPtr handle);
@@ -43,6 +44,11 @@ namespace EchoX
             SetupTrayIcon();
             SetupHotkeys();
             CheckStartupStatus();
+
+            _viewModel.ProfilesViewModel.EditAndNavigateRequested += profile =>
+            {
+                MainTabControl.SelectedIndex = 1; // Profiles tab
+            };
 
             _viewModel.MicrophoneMuteChanged += OnMicrophoneMuteChanged;
 
@@ -166,10 +172,24 @@ namespace EchoX
 
         private void SetupHotkeys()
         {
-            bool cycleRegistered = TryRegisterHotkey("CycleAudio", Key.S, ModifierKeys.Control | ModifierKeys.Alt, CycleProfiles);
-            bool muteRegistered = TryRegisterHotkey("MuteMic", Key.K, ModifierKeys.Control | ModifierKeys.Alt, ToggleMicMute); // Changed from 'M' (common conflict) to 'K'
+            var kb = _viewModel.KeyBindsViewModel;
+            RegisterGlobalHotkeys(kb);
+            kb.HotkeysChanged += () => RegisterGlobalHotkeys(kb);
+        }
 
-            UpdateHotkeyStatus(cycleRegistered, muteRegistered);
+        private void RegisterGlobalHotkeys(ViewModels.KeyBindsViewModel kb)
+        {
+            // Cycle profiles
+            if (kb.CycleKey != System.Windows.Input.Key.None)
+                TryRegisterHotkey("CycleAudio", kb.CycleKey, kb.CycleMods, CycleProfiles);
+            else
+                try { HotkeyManager.Current.Remove("CycleAudio"); } catch { }
+
+            // Toggle mute
+            if (kb.MuteKey != System.Windows.Input.Key.None)
+                TryRegisterHotkey("MuteMic", kb.MuteKey, kb.MuteMods, ToggleMicMute);
+            else
+                try { HotkeyManager.Current.Remove("MuteMic"); } catch { }
         }
 
         private bool TryRegisterHotkey(string name, Key key, ModifierKeys modifiers, EventHandler<HotkeyEventArgs> handler)
@@ -187,12 +207,7 @@ namespace EchoX
             }
         }
 
-        private void UpdateHotkeyStatus(bool cycleRegistered, bool muteRegistered)
-        {
-            // TODO: Update ViewModel for hotkey status
-            // HotkeyStatusText.Text = $"Hotkeys: Ctrl+Alt+S={(cycleRegistered ? "Ready" : "Unavailable")}; Ctrl+Alt+M={(muteRegistered ? "Ready" : "Unavailable")}";
-            // HotkeyStatusText.Foreground = (cycleRegistered && muteRegistered) ? System.Windows.Media.Brushes.LightGreen : System.Windows.Media.Brushes.Orange;
-        }
+        private void UpdateHotkeyStatus(bool cycleRegistered, bool muteRegistered) { }
 
         // When the user clicks the standard minimize button [-]
         protected override void OnStateChanged(EventArgs e)
@@ -255,6 +270,7 @@ namespace EchoX
             _isExiting = true;
             if (_globalMouseHook != IntPtr.Zero) UnhookWindowsHookEx(_globalMouseHook);
             if (_shortcutKbHook != IntPtr.Zero) UnhookWindowsHookEx(_shortcutKbHook);
+            if (_globalKbCapHook != IntPtr.Zero) UnhookWindowsHookEx(_globalKbCapHook);
             _trayIcon?.Dispose();
             if (_mutedIcon != null) DestroyIcon(_mutedIcon.Handle);
             System.Windows.Application.Current.Shutdown();
@@ -316,6 +332,46 @@ namespace EchoX
 
             MainTabControl.SelectedIndex = index;
             UpdateActiveNavButton(index);
+        }
+
+        private void MainTabControl_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            if (!ReferenceEquals(e.Source, MainTabControl))
+                return;
+
+            int newIndex = MainTabControl.SelectedIndex;
+            if (newIndex != _lastSelectedTabIndex)
+            {
+                CleanupLeavingTab(_lastSelectedTabIndex);
+                _lastSelectedTabIndex = newIndex;
+            }
+
+            UpdateActiveNavButton(newIndex);
+        }
+
+        private void CleanupLeavingTab(int tabIndex)
+        {
+            if (tabIndex == 1)
+            {
+                if (_isRecordingShortcut)
+                    StopRecording();
+
+                _viewModel.ProfilesViewModel.CancelEditSession();
+                return;
+            }
+
+            if (tabIndex == 2)
+            {
+                var kb = _viewModel.KeyBindsViewModel;
+                if (kb.IsCapturingCycle || kb.IsCapturingMute)
+                    kb.CancelCapture();
+
+                if (_capturingProfile != null)
+                    _capturingProfile.IsCapturingShortcut = false;
+
+                if (_isCapturingGlobal)
+                    StopCapturingGlobal();
+            }
         }
 
         private void UpdateActiveNavButton(int activeIndex)
@@ -395,7 +451,10 @@ namespace EchoX
         }
 
         private bool _isRecordingShortcut = false;
+        private bool _isCapturingGlobal = false;
+        private EchoX.Models.AudioProfile? _capturingProfile = null;
         private IntPtr _shortcutKbHook = IntPtr.Zero;
+        private IntPtr _globalKbCapHook = IntPtr.Zero;
         private IntPtr _globalMouseHook = IntPtr.Zero;
 
         private delegate IntPtr LowLevelHookProc(int nCode, IntPtr wParam, IntPtr lParam);
@@ -457,6 +516,52 @@ namespace EchoX
             if (rec  != null) rec.Visibility  = Visibility.Collapsed;
         }
 
+        public void StartCapturingGlobal()
+        {
+            _isCapturingGlobal = true;
+            if (_globalKbCapHook == IntPtr.Zero)
+            {
+                using var mod = System.Diagnostics.Process.GetCurrentProcess().MainModule!;
+                _globalKbCapProc = GlobalKbCapCallback;
+                _globalKbCapHook = SetWindowsHookEx(WH_KEYBOARD_LL, _globalKbCapProc, GetModuleHandle(mod.ModuleName!), 0);
+            }
+        }
+
+        public void StopCapturingGlobal()
+        {
+            _isCapturingGlobal = false;
+            _capturingProfile = null;
+            if (_globalKbCapHook != IntPtr.Zero) { UnhookWindowsHookEx(_globalKbCapHook); _globalKbCapHook = IntPtr.Zero; }
+        }
+
+        private LowLevelHookProc? _globalKbCapProc;
+
+        private IntPtr GlobalKbCapCallback(int nCode, IntPtr wParam, IntPtr lParam)
+        {
+            if (nCode >= 0 && _isCapturingGlobal &&
+                (wParam == (IntPtr)WM_KEYDOWN || wParam == (IntPtr)WM_SYSKEYDOWN))
+            {
+                var info = System.Runtime.InteropServices.Marshal.PtrToStructure<KBDLLHOOKSTRUCT>(lParam);
+                if (System.Array.IndexOf(_modifierVKeys, (int)info.vkCode) >= 0)
+                    return CallNextHookEx(_globalKbCapHook, nCode, wParam, lParam);
+
+                var key  = System.Windows.Input.KeyInterop.KeyFromVirtualKey((int)info.vkCode);
+                var mods = System.Windows.Input.Keyboard.Modifiers;
+                var profile = _capturingProfile;
+
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    if (profile != null)
+                        _viewModel.ProfilesViewModel.SaveProfileShortcut(profile, key, mods, null);
+                    else
+                        _viewModel.KeyBindsViewModel.TryCapture(key, mods);
+                    StopCapturingGlobal();
+                }));
+                return (IntPtr)1;
+            }
+            return CallNextHookEx(_globalKbCapHook, nCode, wParam, lParam);
+        }
+
         private static readonly int[] _modifierVKeys = { 0x10, 0x11, 0x12, 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0x5B, 0x5C }; // Shift,Ctrl,Alt variants + Win
 
         private IntPtr KbHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
@@ -509,6 +614,11 @@ namespace EchoX
                         _viewModel.ProfilesViewModel.SetMouseShortcut(label, keyName);
                         StopRecording();
                     }
+                    else if (_isCapturingGlobal && _capturingProfile != null)
+                    {
+                        _viewModel.ProfilesViewModel.SaveProfileShortcut(_capturingProfile, null, System.Windows.Input.ModifierKeys.None, keyName);
+                        StopCapturingGlobal();
+                    }
                     else
                     {
                         _viewModel.ProfilesViewModel.HandleMouseButton(keyName);
@@ -523,6 +633,53 @@ namespace EchoX
         {
             if (_isRecordingShortcut) StopRecording();
             _viewModel.ProfilesViewModel.SetShortcutFromKey(System.Windows.Input.Key.Escape, System.Windows.Input.ModifierKeys.None);
+        }
+
+        private void CycleCaptureBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var kb = _viewModel.KeyBindsViewModel;
+            if (kb.IsCapturingCycle) { kb.CancelCapture(); StopCapturingGlobal(); return; }
+            kb.StartCaptureCycleCommand.Execute(null);
+            StartCapturingGlobal();
+        }
+
+        private void MuteCaptureBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var kb = _viewModel.KeyBindsViewModel;
+            if (kb.IsCapturingMute) { kb.CancelCapture(); StopCapturingGlobal(); return; }
+            kb.StartCaptureMuteCommand.Execute(null);
+            StartCapturingGlobal();
+        }
+
+        private void KeyBindsEditProfile_Click(object sender, RoutedEventArgs e)
+        {
+            if ((sender as System.Windows.Controls.Button)?.Tag is EchoX.Models.AudioProfile profile)
+            {
+                // Toggle capture for this profile
+                if (_isCapturingGlobal && _capturingProfile == profile)
+                {
+                    profile.IsCapturingShortcut = false;
+                    StopCapturingGlobal();
+                    return;
+                }
+                // Cancel any previous capture
+                if (_capturingProfile != null) _capturingProfile.IsCapturingShortcut = false;
+                StopCapturingGlobal();
+
+                profile.IsCapturingShortcut = true;
+                _capturingProfile = profile;
+                StartCapturingGlobal();
+            }
+        }
+
+        private void KeyBindsClearProfile_Click(object sender, RoutedEventArgs e)
+        {
+            if ((sender as System.Windows.Controls.Button)?.Tag is EchoX.Models.AudioProfile profile)
+            {
+                if (_isCapturingGlobal && _capturingProfile == profile)
+                    StopCapturingGlobal();
+                _viewModel.ProfilesViewModel.ClearProfileShortcut(profile);
+            }
         }
 
         private T? FindVisualChild<T>(System.Windows.DependencyObject parent, string name) where T : System.Windows.FrameworkElement

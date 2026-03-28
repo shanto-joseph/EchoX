@@ -11,13 +11,15 @@ namespace EchoX.Services
         private readonly string _folderPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EchoX");
         private readonly string _filePath;
         private readonly string _cachePath;
+        private readonly string _keyBindsPath;
         private List<AudioProfile>? _profilesCache;
         private DeviceCache? _deviceCache;
 
         public StorageService()
         {
-            _filePath  = Path.Combine(_folderPath, "profiles.json");
-            _cachePath = Path.Combine(_folderPath, "cache.json");
+            _filePath     = Path.Combine(_folderPath, "profiles.json");
+            _cachePath    = Path.Combine(_folderPath, "cache.json");
+            _keyBindsPath = Path.Combine(_folderPath, "keybinds.json");
 
             if (!Directory.Exists(_folderPath))
             {
@@ -74,6 +76,17 @@ namespace EchoX.Services
             string path = Path.Combine(_folderPath, "active.dat");
             if (!File.Exists(path)) return string.Empty;
             try { return File.ReadAllText(path).Trim(); } catch { return string.Empty; }
+        }
+
+        public void SaveKeyBinds(EchoX.Models.KeyBindsSettings settings)
+        {
+            try { File.WriteAllText(_keyBindsPath, JsonConvert.SerializeObject(settings, Formatting.Indented)); } catch { }
+        }
+
+        public EchoX.Models.KeyBindsSettings? LoadKeyBinds()
+        {
+            if (!File.Exists(_keyBindsPath)) return null;
+            try { return JsonConvert.DeserializeObject<EchoX.Models.KeyBindsSettings>(File.ReadAllText(_keyBindsPath)); } catch { return null; }
         }
     }
 }

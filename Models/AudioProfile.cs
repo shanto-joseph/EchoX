@@ -68,7 +68,7 @@ namespace EchoX.Models
         public string? ShortcutKey
         {
             get => _shortcutKey;
-            set { if (_shortcutKey != value) { _shortcutKey = value; OnPropertyChanged(); } }
+            set { if (_shortcutKey != value) { _shortcutKey = value; OnPropertyChanged(); OnPropertyChanged(nameof(ShortcutDisplay)); } }
         }
 
         private string? _shortcutModifiers;
@@ -76,7 +76,7 @@ namespace EchoX.Models
         public string? ShortcutModifiers
         {
             get => _shortcutModifiers;
-            set { if (_shortcutModifiers != value) { _shortcutModifiers = value; OnPropertyChanged(); } }
+            set { if (_shortcutModifiers != value) { _shortcutModifiers = value; OnPropertyChanged(); OnPropertyChanged(nameof(ShortcutDisplay)); } }
         }
 
         private string? _shortcutMouseButton;
@@ -84,8 +84,53 @@ namespace EchoX.Models
         public string? ShortcutMouseButton
         {
             get => _shortcutMouseButton;
-            set { if (_shortcutMouseButton != value) { _shortcutMouseButton = value; OnPropertyChanged(); } }
+            set { if (_shortcutMouseButton != value) { _shortcutMouseButton = value; OnPropertyChanged(); OnPropertyChanged(nameof(ShortcutDisplay)); } }
         }
+
+        /// <summary>Human-readable shortcut string for display, e.g. "Ctrl + Alt + 1"</summary>
+        public string ShortcutDisplay
+        {
+            get
+            {
+                if (_isCapturingShortcut) return "Press keys…";
+
+                if (!string.IsNullOrEmpty(_shortcutMouseButton))
+                {
+                    return _shortcutMouseButton switch
+                    {
+                        "XButton1" => "Mouse Button 4",
+                        "XButton2" => "Mouse Button 5",
+                        _ => _shortcutMouseButton
+                    };
+                }
+
+                if (string.IsNullOrEmpty(_shortcutKey))
+                    return "No shortcut";
+
+                var parts = new System.Collections.Generic.List<string>();
+                if (!string.IsNullOrEmpty(_shortcutModifiers))
+                {
+                    if (_shortcutModifiers.Contains("Control")) parts.Add("Ctrl");
+                    if (_shortcutModifiers.Contains("Alt"))     parts.Add("Alt");
+                    if (_shortcutModifiers.Contains("Shift"))   parts.Add("Shift");
+                    if (_shortcutModifiers.Contains("Windows")) parts.Add("Win");
+                }
+                var key = _shortcutKey;
+                if (key.StartsWith("D") && key.Length == 2 && char.IsDigit(key[1])) key = key[1].ToString();
+                else if (key.StartsWith("NumPad")) key = "Num" + key.Substring(6);
+                parts.Add(key);
+                return string.Join(" + ", parts);
+            }
+        }
+
+        /// <summary>Transient — not serialized. True while the Key Binds tab is capturing a new shortcut for this profile.</summary>
+        [Newtonsoft.Json.JsonIgnore]
+        public bool IsCapturingShortcut
+        {
+            get => _isCapturingShortcut;
+            set { if (_isCapturingShortcut != value) { _isCapturingShortcut = value; OnPropertyChanged(); OnPropertyChanged(nameof(ShortcutDisplay)); } }
+        }
+        private bool _isCapturingShortcut;
 
         public event PropertyChangedEventHandler? PropertyChanged;
         protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
