@@ -23,7 +23,7 @@ namespace EchoX
         private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
         private const int DWMWCP_ROUND = 2;
         private readonly MainWindowViewModel _viewModel;
-        private bool _isExiting = false; // track explicit exit
+        private bool _isExiting = false;
         private NotifyIcon _trayIcon = null!;
         private Icon? _activeIcon;
         private Icon? _mutedIcon;
@@ -55,6 +55,11 @@ namespace EchoX
                 var hwnd = new WindowInteropHelper(this).Handle;
                 int pref = DWMWCP_ROUND;
                 DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, ref pref, sizeof(int));
+
+                // Install global mouse hook for side button profile shortcuts
+                _mouseProc = MouseHookCallback;
+                using var mod = System.Diagnostics.Process.GetCurrentProcess().MainModule!;
+                _globalMouseHook = SetWindowsHookEx(WH_MOUSE_LL, _mouseProc, GetModuleHandle(mod.ModuleName!), 0);
             };
         }
 
@@ -241,6 +246,8 @@ namespace EchoX
         private void CloseApp()
         {
             _isExiting = true;
+            if (_globalMouseHook != IntPtr.Zero) UnhookWindowsHookEx(_globalMouseHook);
+            if (_shortcutKbHook != IntPtr.Zero) UnhookWindowsHookEx(_shortcutKbHook);
             _trayIcon?.Dispose();
             if (_mutedIcon != null) DestroyIcon(_mutedIcon.Handle);
             System.Windows.Application.Current.Shutdown();
@@ -378,6 +385,149 @@ namespace EchoX
                 e.Handled = true;
             }
             catch { }
+        }
+
+        private bool _isRecordingShortcut = false;
+        private IntPtr _shortcutKbHook = IntPtr.Zero;
+        private IntPtr _globalMouseHook = IntPtr.Zero;
+
+        private delegate IntPtr LowLevelHookProc(int nCode, IntPtr wParam, IntPtr lParam);
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")] static extern IntPtr SetWindowsHookEx(int idHook, LowLevelHookProc fn, IntPtr hMod, uint threadId);
+        [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool UnhookWindowsHookEx(IntPtr hhk);
+        [System.Runtime.InteropServices.DllImport("user32.dll")] static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
+        [System.Runtime.InteropServices.DllImport("kernel32.dll")] static extern IntPtr GetModuleHandle(string name);
+
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+        private struct KBDLLHOOKSTRUCT { public uint vkCode, scanCode, flags, time; public IntPtr dwExtraInfo; }
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+        private struct MSLLHOOKSTRUCT { public System.Drawing.Point pt; public int mouseData, flags, time; public IntPtr dwExtraInfo; }
+
+        private const int WH_KEYBOARD_LL = 13, WH_MOUSE_LL = 14;
+        private const int WM_KEYDOWN = 0x100, WM_SYSKEYDOWN = 0x104;
+        private const int WM_XBUTTONDOWN = 0x020B;
+        private const int XBUTTON1 = 1, XBUTTON2 = 2;
+
+        private LowLevelHookProc? _kbProc, _mouseProc;
+
+        private void RecordShortcut_Click(object sender, RoutedEventArgs e)
+        {
+            if (_isRecordingShortcut) { StopRecording(); return; }
+            StartRecording();
+        }
+
+        private void StartRecording()
+        {
+            _isRecordingShortcut = true;
+
+            var btn = RecordShortcutBtn;
+            var idle = FindVisualChild<System.Windows.Controls.StackPanel>(btn, "IdlePanel");
+            var rec  = FindVisualChild<System.Windows.Controls.StackPanel>(btn, "RecordingPanel");
+            if (idle != null) idle.Visibility = Visibility.Collapsed;
+            if (rec  != null) rec.Visibility  = Visibility.Visible;
+
+            using var mod = System.Diagnostics.Process.GetCurrentProcess().MainModule!;
+            _kbProc = KbHookCallback;
+            _shortcutKbHook = SetWindowsHookEx(WH_KEYBOARD_LL, _kbProc, GetModuleHandle(mod.ModuleName!), 0);
+
+            // Mouse hook stays alive globally — only install once
+            if (_globalMouseHook == IntPtr.Zero)
+            {
+                _mouseProc = MouseHookCallback;
+                _globalMouseHook = SetWindowsHookEx(WH_MOUSE_LL, _mouseProc, GetModuleHandle(mod.ModuleName!), 0);
+            }
+        }
+
+        private void StopRecording()
+        {
+            _isRecordingShortcut = false;
+            if (_shortcutKbHook != IntPtr.Zero) { UnhookWindowsHookEx(_shortcutKbHook); _shortcutKbHook = IntPtr.Zero; }
+
+            var btn = RecordShortcutBtn;
+            var idle = FindVisualChild<System.Windows.Controls.StackPanel>(btn, "IdlePanel");
+            var rec  = FindVisualChild<System.Windows.Controls.StackPanel>(btn, "RecordingPanel");
+            if (idle != null) idle.Visibility = Visibility.Visible;
+            if (rec  != null) rec.Visibility  = Visibility.Collapsed;
+        }
+
+        private static readonly int[] _modifierVKeys = { 0x10, 0x11, 0x12, 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0x5B, 0x5C }; // Shift,Ctrl,Alt variants + Win
+
+        private IntPtr KbHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
+        {
+            if (nCode >= 0 && (wParam == (IntPtr)WM_KEYDOWN || wParam == (IntPtr)WM_SYSKEYDOWN))
+            {
+                var info = System.Runtime.InteropServices.Marshal.PtrToStructure<KBDLLHOOKSTRUCT>(lParam);
+                int vk = (int)info.vkCode;
+
+                // Ignore pure modifier key presses — wait for the actual key
+                if (System.Array.IndexOf(_modifierVKeys, vk) >= 0)
+                    return CallNextHookEx(_shortcutKbHook, nCode, wParam, lParam);
+
+                var key  = System.Windows.Input.KeyInterop.KeyFromVirtualKey(vk);
+                var mods = System.Windows.Input.Keyboard.Modifiers;
+
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    // Check for conflict before assigning
+                    string? conflict = _viewModel.ProfilesViewModel.GetShortcutConflict(key, mods, null);
+                    if (conflict != null)
+                    {
+                        _viewModel.ProfilesViewModel.SetShortcutFromKey(key, mods); // still set it
+                        _viewModel.ProfilesViewModel.ShortcutWarning = $"Already used by \"{conflict}\"";
+                    }
+                    else
+                    {
+                        _viewModel.ProfilesViewModel.ShortcutWarning = null;
+                        _viewModel.ProfilesViewModel.SetShortcutFromKey(key, mods);
+                    }
+                    StopRecording();
+                }));
+                return (IntPtr)1;
+            }
+            return CallNextHookEx(_shortcutKbHook, nCode, wParam, lParam);
+        }
+
+        private IntPtr MouseHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
+        {
+            if (nCode >= 0 && wParam == (IntPtr)WM_XBUTTONDOWN)
+            {
+                var info = System.Runtime.InteropServices.Marshal.PtrToStructure<MSLLHOOKSTRUCT>(lParam);
+                int btn = (info.mouseData >> 16) & 0xFFFF;
+                string label = btn == XBUTTON1 ? "Mouse Button 4" : "Mouse Button 5";
+                string keyName = btn == XBUTTON1 ? "XButton1" : "XButton2";
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    if (_isRecordingShortcut)
+                    {
+                        _viewModel.ProfilesViewModel.SetMouseShortcut(label, keyName);
+                        StopRecording();
+                    }
+                    else
+                    {
+                        _viewModel.ProfilesViewModel.HandleMouseButton(keyName);
+                    }
+                }));
+                return (IntPtr)1;
+            }
+            return CallNextHookEx(_globalMouseHook, nCode, wParam, lParam);
+        }
+
+        private void ClearShortcut_Click(object sender, RoutedEventArgs e)
+        {
+            if (_isRecordingShortcut) StopRecording();
+            _viewModel.ProfilesViewModel.SetShortcutFromKey(System.Windows.Input.Key.Escape, System.Windows.Input.ModifierKeys.None);
+        }
+
+        private T? FindVisualChild<T>(System.Windows.DependencyObject parent, string name) where T : System.Windows.FrameworkElement
+        {
+            for (int i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(parent); i++)
+            {
+                var child = System.Windows.Media.VisualTreeHelper.GetChild(parent, i);
+                if (child is T fe && fe.Name == name) return fe;
+                var result = FindVisualChild<T>(child, name);
+                if (result != null) return result;
+            }
+            return null;
         }
 
         private T? FindVisualChild<T>(DependencyObject? parent) where T : DependencyObject
