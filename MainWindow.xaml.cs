@@ -27,6 +27,7 @@ namespace EchoX
         private NotifyIcon _trayIcon = null!;
         private Icon? _activeIcon;
         private Icon? _mutedIcon;
+        private MuteIndicator? _muteIndicator;
         private int _lastSelectedTabIndex = 0;
 
         [DllImport("user32.dll", CharSet = CharSet.Auto)]
@@ -112,11 +113,25 @@ namespace EchoX
             {
                 _trayIcon.Icon = _mutedIcon;
                 _trayIcon.Text = "EchoX (MUTED)";
+
+                // Show persistent mute indicator if enabled
+                if (_viewModel.SettingsViewModel.ShowMuteIndicator)
+                {
+                    if (_muteIndicator == null || !_muteIndicator.IsLoaded)
+                    {
+                        _muteIndicator = new MuteIndicator();
+                        _muteIndicator.Show();
+                    }
+                }
             }
             else
             {
                 _trayIcon.Icon = _activeIcon;
                 _trayIcon.Text = "EchoX Audio Manager";
+
+                // Hide mute indicator
+                _muteIndicator?.Close();
+                _muteIndicator = null;
             }
         }
 
@@ -271,6 +286,7 @@ namespace EchoX
         private void CloseApp()
         {
             _isExiting = true;
+            _muteIndicator?.Close();
             if (_globalMouseHook != IntPtr.Zero) UnhookWindowsHookEx(_globalMouseHook);
             if (_shortcutKbHook != IntPtr.Zero) UnhookWindowsHookEx(_shortcutKbHook);
             if (_globalKbCapHook != IntPtr.Zero) UnhookWindowsHookEx(_globalKbCapHook);
@@ -401,10 +417,16 @@ namespace EchoX
                     foreach (var tb in sp.Children.OfType<System.Windows.Controls.TextBlock>())
                         tb.Foreground = color;
 
-                    // Handle vector icons (Path) as well 
                     foreach (var viewbox in sp.Children.OfType<System.Windows.Controls.Viewbox>())
+                    {
+                        // Direct Path child
                         if (viewbox.Child is System.Windows.Shapes.Path path)
                             path.Fill = color;
+                        // Path inside a Canvas
+                        else if (viewbox.Child is System.Windows.Controls.Canvas canvas)
+                            foreach (var p in canvas.Children.OfType<System.Windows.Shapes.Path>())
+                                p.Fill = color;
+                    }
                 }
             }
         }

@@ -569,8 +569,12 @@
                     <Button x:Name="BtnNav2" Tag="Shortcuts" Click="SidebarButton_Click"
                             Style="{StaticResource NavBtn}">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="&#xE92E;" FontFamily="Segoe MDL2 Assets" FontSize="13" Margin="0,0,10,0"
-                                       Foreground="{StaticResource TextMid}"/>
+                            <Viewbox Width="13" Height="13" Margin="0,0,10,0" VerticalAlignment="Center">
+                                <Canvas Width="24" Height="24">
+                                    <Path Fill="{StaticResource TextMid}"
+                                          Data="M2 7a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7Zm5.01 1H5v2.01h2.01V8Zm3 0H8v2.01h2.01V8Zm3 0H11v2.01h2.01V8Zm3 0H14v2.01h2.01V8Zm3 0H17v2.01h2.01V8Zm-12 3H5v2.01h2.01V11Zm3 0H8v2.01h2.01V11Zm3 0H11v2.01h2.01V11Zm3 0H14v2.01h2.01V11Zm3 0H17v2.01h2.01V11Zm-12 3H5v2.01h2.01V14ZM8 14l-.001 2 8.011.01V14H8Zm11.01 0H17v2.01h2.01V14Z"/>
+                                </Canvas>
+                            </Viewbox>
                             <TextBlock Text="Key Binds" FontSize="13" Foreground="{StaticResource TextMid}"/>
                         </StackPanel>
                     </Button>
@@ -2241,30 +2245,218 @@
 
             <!-- ──────────────────────── SETTINGS TAB -->
             <TabItem Header="Settings">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <StackPanel Margin="28,24,28,24">
                     <TextBlock Text="Settings" Foreground="{StaticResource TextHi}"
                                FontSize="20" FontWeight="SemiBold"/>
                     <TextBlock Text="Configure EchoX behaviour"
-                               Foreground="{StaticResource TextMid}" FontSize="12" Margin="0,3,0,20"/>
-                    <Border Style="{StaticResource Card}" Padding="18,16">
+                               Foreground="{StaticResource TextMid}" FontSize="12" Margin="0,3,0,24"/>
+
+                    <!-- ── GENERAL ── -->
+                    <TextBlock Text="GENERAL" Style="{StaticResource Label}" Margin="0,0,0,8"/>
+                    <Border Style="{StaticResource Card}" Padding="0" Margin="0,0,0,20">
                         <StackPanel>
-                            <TextBlock Text="STARTUP" Style="{StaticResource Label}"/>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Grid.Column="0">
-                                    <TextBlock Text="Launch with Windows" Foreground="{StaticResource TextHi}"
-                                               FontSize="13" FontWeight="SemiBold"/>
-                                    <TextBlock Text="EchoX starts minimised to the system tray"
-                                               Foreground="{StaticResource TextMid}" FontSize="12" Margin="0,2,0,0"/>
-                                </StackPanel>
-                                <CheckBox Grid.Column="1" VerticalAlignment="Center"/>
-                            </Grid>
+                            <!-- Launch with Windows -->
+                            <Border Padding="18,14" BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border Grid.Column="0" Width="34" Height="34" Margin="0,0,14,0">
+                                        <TextBlock Text="&#xE7E8;" FontFamily="Segoe MDL2 Assets"
+                                                   Foreground="{StaticResource TextMid}" FontSize="15"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <TextBlock Text="Launch with Windows" Foreground="{StaticResource TextHi}"
+                                                   FontSize="13" FontWeight="SemiBold"/>
+                                        <TextBlock Text="Start minimised to the system tray on login"
+                                                   Foreground="{StaticResource TextMid}" FontSize="12" Margin="0,2,0,0"/>
+                                    </StackPanel>
+                                    <CheckBox Grid.Column="2" VerticalAlignment="Center"
+                                              IsChecked="{Binding SettingsViewModel.LaunchWithWindows}"
+                                              Style="{StaticResource ToggleSwitch}"/>
+                                </Grid>
+                            </Border>
+                            <!-- Show mute indicator -->
+                            <Border Padding="18,14">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border Grid.Column="0" Width="34" Height="34" Margin="0,0,14,0">
+                                        <TextBlock Text="&#xE74F;" FontFamily="Segoe MDL2 Assets"
+                                                   Foreground="{StaticResource TextMid}" FontSize="15"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <TextBlock Text="Show Mute Indicator" Foreground="{StaticResource TextHi}"
+                                                   FontSize="13" FontWeight="SemiBold"/>
+                                        <TextBlock Text="Persistent icon on screen when mic is muted"
+                                                   Foreground="{StaticResource TextMid}" FontSize="12" Margin="0,2,0,0"/>
+                                    </StackPanel>
+                                    <CheckBox Grid.Column="2" VerticalAlignment="Center"
+                                              IsChecked="{Binding SettingsViewModel.ShowMuteIndicator}"
+                                              Style="{StaticResource ToggleSwitch}"/>
+                                </Grid>
+                            </Border>
                         </StackPanel>
                     </Border>
+
+                    <!-- ── UPDATES ── -->
+                    <TextBlock Text="UPDATES" Style="{StaticResource Label}" Margin="0,0,0,8"/>
+                    <Border Style="{StaticResource Card}" Padding="0" Margin="0,0,0,20">
+                        <StackPanel>
+                            <Border Padding="18,14" BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border Grid.Column="0" Width="34" Height="34" Margin="0,0,14,0">
+                                        <TextBlock Text="&#xE7E7;" FontFamily="Segoe MDL2 Assets"
+                                                   Foreground="{StaticResource TextMid}" FontSize="15"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <TextBlock Text="Notify When Update Available" Foreground="{StaticResource TextHi}"
+                                                   FontSize="13" FontWeight="SemiBold"/>
+                                        <TextBlock Text="Get notified when a new version is released"
+                                                   Foreground="{StaticResource TextMid}" FontSize="12" Margin="0,2,0,0"/>
+                                    </StackPanel>
+                                    <CheckBox Grid.Column="2" VerticalAlignment="Center"
+                                              IsChecked="{Binding SettingsViewModel.UpdateNotifyOnly}"
+                                              Style="{StaticResource ToggleSwitch}"/>
+                                </Grid>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- ── NOTIFICATIONS ── -->
+                    <TextBlock Text="NOTIFICATIONS" Style="{StaticResource Label}" Margin="0,0,0,8"/>
+                    <TextBlock Text="Choose how EchoX alerts you when switching profiles or muting."
+                               Foreground="{StaticResource TextLow}" FontSize="11" Margin="0,0,0,10"/>
+
+                    <!-- 4 fixed-size cards in one row -->
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
+
+                        <!-- Popup -->
+                        <Button Width="100" Height="90" Margin="0,0,8,0"
+                                Command="{Binding SettingsViewModel.SetNotifyPopupCommand}" Cursor="Hand">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border CornerRadius="10" BorderThickness="1"
+                                            Background="{StaticResource BgCard}" BorderBrush="{StaticResource Border}">
+                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <TextBlock x:Name="Ico" Text="&#xE8BD;" FontFamily="Segoe MDL2 Assets"
+                                                       Foreground="{StaticResource TextLow}" FontSize="20"
+                                                       HorizontalAlignment="Center" Margin="0,0,0,6"/>
+                                            <TextBlock x:Name="Lbl" Text="Popup" FontSize="11" FontWeight="SemiBold"
+                                                       Foreground="{StaticResource TextMid}" HorizontalAlignment="Center"/>
+                                            <TextBlock Text="Overlay" FontSize="9" Foreground="{StaticResource TextLow}"
+                                                       HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <DataTrigger Binding="{Binding SettingsViewModel.NotifyPopupScreen}" Value="True">
+                                            <Setter TargetName="Ico" Property="Foreground" Value="{StaticResource Accent}"/>
+                                            <Setter TargetName="Lbl" Property="Foreground" Value="{StaticResource Accent}"/>
+                                        </DataTrigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+
+                        <!-- Sound -->
+                        <Button Width="100" Height="90" Margin="0,0,8,0"
+                                Command="{Binding SettingsViewModel.SetNotifySoundCommand}" Cursor="Hand">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border CornerRadius="10" BorderThickness="1"
+                                            Background="{StaticResource BgCard}" BorderBrush="{StaticResource Border}">
+                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <TextBlock x:Name="Ico" Text="&#xE767;" FontFamily="Segoe MDL2 Assets"
+                                                       Foreground="{StaticResource TextLow}" FontSize="20"
+                                                       HorizontalAlignment="Center" Margin="0,0,0,6"/>
+                                            <TextBlock x:Name="Lbl" Text="Sound" FontSize="11" FontWeight="SemiBold"
+                                                       Foreground="{StaticResource TextMid}" HorizontalAlignment="Center"/>
+                                            <TextBlock Text="Audio cue" FontSize="9" Foreground="{StaticResource TextLow}"
+                                                       HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <DataTrigger Binding="{Binding SettingsViewModel.NotifySoundOnly}" Value="True">
+                                            <Setter TargetName="Ico" Property="Foreground" Value="{StaticResource Accent}"/>
+                                            <Setter TargetName="Lbl" Property="Foreground" Value="{StaticResource Accent}"/>
+                                        </DataTrigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+
+                        <!-- Windows -->
+                        <Button Width="100" Height="90" Margin="0,0,8,0"
+                                Command="{Binding SettingsViewModel.SetNotifyWindowsCommand}" Cursor="Hand">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border CornerRadius="10" BorderThickness="1"
+                                            Background="{StaticResource BgCard}" BorderBrush="{StaticResource Border}">
+                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <TextBlock x:Name="Ico" Text="&#xEA8F;" FontFamily="Segoe MDL2 Assets"
+                                                       Foreground="{StaticResource TextLow}" FontSize="20"
+                                                       HorizontalAlignment="Center" Margin="0,0,0,6"/>
+                                            <TextBlock x:Name="Lbl" Text="Windows" FontSize="11" FontWeight="SemiBold"
+                                                       Foreground="{StaticResource TextMid}" HorizontalAlignment="Center"/>
+                                            <TextBlock Text="System" FontSize="9" Foreground="{StaticResource TextLow}"
+                                                       HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <DataTrigger Binding="{Binding SettingsViewModel.NotifyWindows}" Value="True">
+                                            <Setter TargetName="Ico" Property="Foreground" Value="{StaticResource Accent}"/>
+                                            <Setter TargetName="Lbl" Property="Foreground" Value="{StaticResource Accent}"/>
+                                        </DataTrigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+
+                        <!-- None -->
+                        <Button Width="100" Height="90"
+                                Command="{Binding SettingsViewModel.SetNotifyNoneCommand}" Cursor="Hand">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border CornerRadius="10" BorderThickness="1"
+                                            Background="{StaticResource BgCard}" BorderBrush="{StaticResource Border}">
+                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <TextBlock x:Name="Ico" Text="&#xE711;" FontFamily="Segoe MDL2 Assets"
+                                                       Foreground="{StaticResource TextLow}" FontSize="20"
+                                                       HorizontalAlignment="Center" Margin="0,0,0,6"/>
+                                            <TextBlock x:Name="Lbl" Text="None" FontSize="11" FontWeight="SemiBold"
+                                                       Foreground="{StaticResource TextMid}" HorizontalAlignment="Center"/>
+                                            <TextBlock Text="Silent" FontSize="9" Foreground="{StaticResource TextLow}"
+                                                       HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <DataTrigger Binding="{Binding SettingsViewModel.NotifyNone}" Value="True">
+                                            <Setter TargetName="Ico" Property="Foreground" Value="{StaticResource Accent}"/>
+                                            <Setter TargetName="Lbl" Property="Foreground" Value="{StaticResource Accent}"/>
+                                        </DataTrigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+
+                    </StackPanel>
+
                 </StackPanel>
+                </ScrollViewer>
             </TabItem>
 
             <!-- ──────────────────────── ABOUT TAB -->
@@ -2272,7 +2464,7 @@
                 <StackPanel Margin="28,24,28,24">
                     <TextBlock Text="About" Foreground="{StaticResource TextHi}"
                                FontSize="20" FontWeight="SemiBold" Margin="0,0,0,20"/>
-                    <Border Style="{StaticResource Card}" Padding="20,18">
+                    <Border Style="{StaticResource Card}" Padding="20,18" Margin="0,0,0,16">
                         <StackPanel>
                             <Border Background="{StaticResource AccentLow}" CornerRadius="12"
                                     Width="52" Height="52" HorizontalAlignment="Left" Margin="0,0,0,16">
@@ -2288,6 +2480,32 @@
                                        TextWrapping="Wrap" LineHeight="22"
                                        Text="A lightweight audio device manager for Windows. Switch between microphones and speakers instantly using profiles and global hotkeys — all from the system tray."/>
                         </StackPanel>
+                    </Border>
+                    <!-- Check for Update -->
+                    <Border Style="{StaticResource Card}" Padding="0">
+                        <Border Padding="18,14">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Border Grid.Column="0" Width="34" Height="34" Margin="0,0,14,0">
+                                    <TextBlock Text="&#xE895;" FontFamily="Segoe MDL2 Assets"
+                                               Foreground="{StaticResource TextMid}" FontSize="15"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Text="Check for Update" Foreground="{StaticResource TextHi}"
+                                               FontSize="13" FontWeight="SemiBold"/>
+                                    <TextBlock Text="Manually check if a new version is available"
+                                               Foreground="{StaticResource TextMid}" FontSize="12" Margin="0,2,0,0"/>
+                                </StackPanel>
+                                <Button Grid.Column="2" Style="{StaticResource BtnPrimary}"
+                                        Height="30" Padding="14,0" VerticalAlignment="Center"
+                                        Content="Check now"/>
+                            </Grid>
+                        </Border>
                     </Border>
                 </StackPanel>
             </TabItem>
@@ -2370,3 +2588,4 @@
         </Grid>
     </Border>
 </Window>
+

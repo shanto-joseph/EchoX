@@ -42,7 +42,29 @@ namespace EchoX.ViewModels
 
         public void NotifyTray(string title, string message)
         {
-            ShowTrayNotification?.Invoke(title, message);
+            switch (SettingsViewModel.NotificationType)
+            {
+                case NotificationType.PopupScreen:
+                    System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        var popup = new EchoX.NotificationPopup(title, message);
+                        popup.Show();
+                    }));
+                    AudioEngine.PlayNotificationSound();
+                    break;
+
+                case NotificationType.SoundOnly:
+                    AudioEngine.PlayNotificationSound();
+                    break;
+
+                case NotificationType.None:
+                    // do nothing
+                    break;
+
+                case NotificationType.WindowsNotification:
+                    ShowTrayNotification?.Invoke(title, message);
+                    break;
+            }
         }
 
         public void OnMicrophoneMuteChanged(bool isMuted)
