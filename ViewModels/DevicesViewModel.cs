@@ -14,7 +14,18 @@ namespace EchoX.ViewModels
         private readonly MainWindowViewModel _mainWindowViewModel;
 
         private AudioDevice? _currentCallInputDevice;
+        public AudioDevice? CurrentCallInputDevice
+        {
+            get => _currentCallInputDevice;
+            private set => SetProperty(ref _currentCallInputDevice, value);
+        }
+
         private AudioDevice? _currentCallOutputDevice;
+        public AudioDevice? CurrentCallOutputDevice
+        {
+            get => _currentCallOutputDevice;
+            private set => SetProperty(ref _currentCallOutputDevice, value);
+        }
         private IDisposable? _inputVolumeWatcher;
         private IDisposable? _outputVolumeWatcher;
         private IDisposable? _deviceWatcher;
@@ -62,6 +73,8 @@ namespace EchoX.ViewModels
         public ObservableCollection<AudioDevice> OutputDevices { get; } = new ObservableCollection<AudioDevice>();
         public ObservableCollection<AudioDevice> AllDevices    { get; } = new ObservableCollection<AudioDevice>();
 
+        internal int _pendingSwitches = 0;
+
         private AudioDevice? _currentInputDevice;
         public AudioDevice? CurrentInputDevice
         {
@@ -70,16 +83,19 @@ namespace EchoX.ViewModels
             {
                 if (SetProperty(ref _currentInputDevice, value) && value != null)
                 {
-                    // Offload heavy hardware switch to background to keep UI snappy
+                    var captured = value;
+                    bool fromProfile = _pendingSwitches > 0;
                     System.Threading.Tasks.Task.Run(() =>
                     {
-                        _audioEngine.SwitchDevice(value.Id);
-                        
+                        _audioEngine.SwitchDevice(captured.Id);
                         System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
                         {
-                            UpdateVolumeAndWatchers(value, true);
-                            UpdateDeviceMuteStates(); // Sync labels
-                            RefreshActiveProfile();
+                            UpdateVolumeAndWatchers(captured, true);
+                            UpdateDeviceMuteStates();
+                            if (fromProfile)
+                                CompleteProfileSwitchStep();
+                            else
+                                RefreshActiveProfile();
                             if (IsMicTesting) UpdateMicTest();
                         }));
                     });
@@ -95,19 +111,33 @@ namespace EchoX.ViewModels
             {
                 if (SetProperty(ref _currentOutputDevice, value) && value != null)
                 {
+                    var captured = value;
+                    bool fromProfile = _pendingSwitches > 0;
                     System.Threading.Tasks.Task.Run(() =>
                     {
-                        _audioEngine.SwitchDevice(value.Id);
-                        
+                        _audioEngine.SwitchDevice(captured.Id);
                         System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
                         {
-                            UpdateVolumeAndWatchers(value, false);
-                            UpdateDeviceMuteStates(); // Sync labels
-                            RefreshActiveProfile();
+                            UpdateVolumeAndWatchers(captured, false);
+                            UpdateDeviceMuteStates();
+                            if (fromProfile)
+                                CompleteProfileSwitchStep();
+                            else
+                                RefreshActiveProfile();
                         }));
                     });
                 }
             }
+        }
+
+        private void CompleteProfileSwitchStep()
+        {
+            if (_pendingSwitches <= 0)
+                return;
+
+            _pendingSwitches--;
+            if (_pendingSwitches == 0)
+                RefreshActiveProfile();
         }
 
         private void UpdateVolumeAndWatchers(AudioDevice device, bool isInput)
@@ -267,28 +297,50 @@ namespace EchoX.ViewModels
                     var combined = mics.Concat(speakers).ToList();
                     UpdateCollection(AllDevices, combined);
 
-                    _currentInputDevice = defaultMic != null
-                        ? InputDevices.FirstOrDefault(d => d.Id == defaultMic.Id.ToString()) ?? InputDevices.FirstOrDefault()
-                        : InputDevices.FirstOrDefault();
+                    // Only update current devices from OS if no profile switch is in progress
+                    if (_pendingSwitches == 0)
+                    {
+                        // Use saved active profile's devices if available, else OS defaults
+                        var activeProfileId = _storageService.LoadActiveProfileId();
+                        AudioProfile? activeProfile = null;
+                        if (!string.IsNullOrEmpty(activeProfileId))
+                        {
+                            var allProfiles = _storageService.LoadProfiles();
+                            activeProfile = allProfiles.FirstOrDefault(p => p.Id == activeProfileId);
+                        }
 
-                    _currentOutputDevice = defaultSpeaker != null
-                        ? OutputDevices.FirstOrDefault(d => d.Id == defaultSpeaker.Id.ToString()) ?? OutputDevices.FirstOrDefault()
-                        : OutputDevices.FirstOrDefault();
-
-                    // Clear existing call device markers before setting new ones
+                        if (activeProfile != null)
+                        {
+                            _currentInputDevice  = InputDevices.FirstOrDefault(d => d.Id == activeProfile.InputDeviceId)
+                                                ?? (defaultMic != null ? InputDevices.FirstOrDefault(d => d.Id == defaultMic.Id.ToString()) : null)
+                                                ?? InputDevices.FirstOrDefault();
+                            _currentOutputDevice = OutputDevices.FirstOrDefault(d => d.Id == activeProfile.OutputDeviceId)
+                                                ?? (defaultSpeaker != null ? OutputDevices.FirstOrDefault(d => d.Id == defaultSpeaker.Id.ToString()) : null)
+                                                ?? OutputDevices.FirstOrDefault();
+                        }
+                        else
+                        {
+                            _currentInputDevice  = defaultMic != null
+                                ? InputDevices.FirstOrDefault(d => d.Id == defaultMic.Id.ToString()) ?? InputDevices.FirstOrDefault()
+                                : InputDevices.FirstOrDefault();
+                            _currentOutputDevice = defaultSpeaker != null
+                                ? OutputDevices.FirstOrDefault(d => d.Id == defaultSpeaker.Id.ToString()) ?? OutputDevices.FirstOrDefault()
+                                : OutputDevices.FirstOrDefault();
+                        }
+                    }
                     foreach (var d in InputDevices) d.IsCallDevice = false;
                     foreach (var d in OutputDevices) d.IsCallDevice = false;
 
-                    _currentCallInputDevice = callMic != null
+                    CurrentCallInputDevice = callMic != null
                         ? InputDevices.FirstOrDefault(d => d.Id == callMic.Id.ToString()) ?? InputDevices.FirstOrDefault()
                         : InputDevices.FirstOrDefault();
 
-                    _currentCallOutputDevice = callSpeaker != null
+                    CurrentCallOutputDevice = callSpeaker != null
                         ? OutputDevices.FirstOrDefault(d => d.Id == callSpeaker.Id.ToString()) ?? OutputDevices.FirstOrDefault()
                         : OutputDevices.FirstOrDefault();
 
-                    if (_currentCallInputDevice != null) _currentCallInputDevice.IsCallDevice = true;
-                    if (_currentCallOutputDevice != null) _currentCallOutputDevice.IsCallDevice = true;
+                    if (CurrentCallInputDevice != null) CurrentCallInputDevice.IsCallDevice = true;
+                    if (CurrentCallOutputDevice != null) CurrentCallOutputDevice.IsCallDevice = true;
 
                     // Read real volumes
                     _inputVolume = _currentInputDevice != null ? _audioEngine.GetVolume(_currentInputDevice.Id) : 100;
@@ -301,7 +353,9 @@ namespace EchoX.ViewModels
                     OnPropertyChanged(nameof(InputVolume));
                     OnPropertyChanged(nameof(OutputVolume));
 
-                    RefreshActiveProfile();
+                    // Only refresh active profile from LoadDevices if no profile switch is pending
+                    if (_pendingSwitches == 0)
+                        RefreshActiveProfile();
 
                     // Step 3: Save results to cache for next run
                     _storageService.SaveDeviceCache(new DeviceCache {
@@ -368,7 +422,7 @@ namespace EchoX.ViewModels
                 _audioEngine.SetAsCallDevice(device.Id);
                 System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() => {
                     foreach(var d in InputDevices) d.IsCallDevice = (d.Id == device.Id);
-                    _currentCallInputDevice = device;
+                    CurrentCallInputDevice = device;
                 }));
             });
         }
@@ -379,7 +433,7 @@ namespace EchoX.ViewModels
                 _audioEngine.SetAsCallDevice(device.Id);
                 System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() => {
                     foreach (var d in OutputDevices) d.IsCallDevice = (d.Id == device.Id);
-                    _currentCallOutputDevice = device;
+                    CurrentCallOutputDevice = device;
                 }));
             });
         }
@@ -388,24 +442,17 @@ namespace EchoX.ViewModels
         {
             var profiles = _storageService.LoadProfiles();
 
-            // Find a profile matching both current devices exactly
             var match = profiles.FirstOrDefault(p =>
                 p.InputDeviceId  == _currentInputDevice?.Id &&
                 p.OutputDeviceId == _currentOutputDevice?.Id);
 
             if (match != null)
-            {
                 _storageService.SaveActiveProfileId(match.Id);
-            }
             else
-            {
-                // No profile matches the current device combo — clear active
                 _storageService.SaveActiveProfileId("");
-            }
 
             ActiveProfileName = match?.Name;
 
-            // Sync ProfilesViewModel visual highlight (no hardware switching)
             var profVm = _mainWindowViewModel.ProfilesViewModel;
             profVm.ActiveProfile = match != null
                 ? profVm.Profiles.FirstOrDefault(p => p.Id == match.Id)

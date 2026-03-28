@@ -27,7 +27,7 @@ namespace EchoX.Services
 
         public void SaveProfiles(List<AudioProfile> profiles)
         {
-            _profilesCache = profiles;
+            _profilesCache = null; // invalidate cache so next load reads fresh
             string json = JsonConvert.SerializeObject(profiles, Formatting.Indented);
             File.WriteAllText(_filePath, json);
         }

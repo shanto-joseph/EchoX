@@ -14,6 +14,7 @@ namespace EchoX.Models
         private string? _callOutputDeviceId;
         private int _volumeLevel = 100;
         private bool _isActive;
+        private string? _shortcutKey;
 
         public string Id 
         { 
@@ -61,6 +62,29 @@ namespace EchoX.Models
         {
             get => _isActive;
             set { if (_isActive != value) { _isActive = value; OnPropertyChanged(); } }
+        }
+
+        /// <summary>Shortcut key, e.g. "D1", "F1". Null = no shortcut.</summary>
+        public string? ShortcutKey
+        {
+            get => _shortcutKey;
+            set { if (_shortcutKey != value) { _shortcutKey = value; OnPropertyChanged(); } }
+        }
+
+        private string? _shortcutModifiers;
+        /// <summary>Modifier flags as string, e.g. "Control,Alt"</summary>
+        public string? ShortcutModifiers
+        {
+            get => _shortcutModifiers;
+            set { if (_shortcutModifiers != value) { _shortcutModifiers = value; OnPropertyChanged(); } }
+        }
+
+        private string? _shortcutMouseButton;
+        /// <summary>"XButton1" or "XButton2" if shortcut is a mouse button</summary>
+        public string? ShortcutMouseButton
+        {
+            get => _shortcutMouseButton;
+            set { if (_shortcutMouseButton != value) { _shortcutMouseButton = value; OnPropertyChanged(); } }
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
