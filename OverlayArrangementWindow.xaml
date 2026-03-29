@@ -1,0 +1,195 @@
+<Window x:Class="EchoX.OverlayArrangementWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Arrange Overlays"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        Topmost="True"
+        Background="#C60B0E0F"
+        WindowStartupLocation="Manual">
+    <Grid MouseMove="Window_MouseMove" MouseLeftButtonUp="Window_MouseLeftButtonUp">
+        <Grid.Resources>
+            <Style x:Key="OverlayActionButton" TargetType="Button">
+                <Setter Property="Foreground" Value="#EDEDF0"/>
+                <Setter Property="Background" Value="#24272C"/>
+                <Setter Property="BorderBrush" Value="#343841"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="FontSize" Value="12"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Root"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="10"
+                                    Padding="18,0">
+                                <ContentPresenter HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Root" Property="BorderBrush" Value="#53C028"/>
+                                    <Setter TargetName="Root" Property="Background" Value="#2A2E35"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="Root" Property="Opacity" Value="0.88"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style x:Key="PrimaryOverlayActionButton" TargetType="Button" BasedOn="{StaticResource OverlayActionButton}">
+                <Setter Property="Foreground" Value="#041004"/>
+                <Setter Property="Background" Value="#53C028"/>
+                <Setter Property="BorderBrush" Value="#53C028"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Root"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="10"
+                                    Padding="18,0">
+                                <ContentPresenter HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Root" Property="Opacity" Value="0.88"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="Root" Property="Opacity" Value="0.78"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+        </Grid.Resources>
+        <Canvas x:Name="DesignCanvas">
+            <Border x:Name="TopPanel"
+                    Canvas.Left="24"
+                    Canvas.Top="24"
+                    Width="420"
+                    Background="#EA191B1F"
+                    BorderBrush="#2E3238"
+                    BorderThickness="1"
+                    CornerRadius="14"
+                    Padding="18,16">
+                <StackPanel>
+                    <TextBlock Text="Arrange Overlays"
+                               Foreground="#EDEDF0"
+                               FontSize="20"
+                               FontWeight="SemiBold"/>
+                    <TextBlock Text="Drag each preview where you want it to appear on this monitor."
+                               Foreground="#8A9199"
+                               FontSize="12"
+                               Margin="0,6,0,0"/>
+                    <TextBlock x:Name="MonitorText"
+                               Foreground="#53C028"
+                               FontSize="11"
+                               Margin="0,10,0,0"/>
+                </StackPanel>
+            </Border>
+
+            <Border x:Name="ActionBar"
+                    Background="#EA191B1F"
+                    BorderBrush="#2E3238"
+                    BorderThickness="1"
+                    CornerRadius="16"
+                    Padding="12">
+                <StackPanel Orientation="Horizontal">
+                <Button Content="Reset"
+                        Style="{StaticResource OverlayActionButton}"
+                        Width="92"
+                        Height="38"
+                        Margin="0,0,12,0"
+                        Click="ResetBtn_Click"/>
+                <Button Content="Cancel"
+                        Style="{StaticResource OverlayActionButton}"
+                        Width="96"
+                        Height="38"
+                        Margin="0,0,12,0"
+                        Click="CancelBtn_Click"/>
+                <Button Content="Apply"
+                        Style="{StaticResource PrimaryOverlayActionButton}"
+                        Width="104"
+                        Height="38"
+                        Click="ApplyBtn_Click"/>
+                </StackPanel>
+            </Border>
+
+            <Border x:Name="NotificationPreview"
+                    Width="180"
+                    Background="#F0191B1F"
+                    BorderBrush="#2E3238"
+                    BorderThickness="1"
+                    CornerRadius="10"
+                    Cursor="SizeAll"
+                    MouseLeftButtonDown="Preview_MouseLeftButtonDown"
+                    MouseLeftButtonUp="Preview_MouseLeftButtonUp">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="18" ShadowDepth="0" Color="#000000" Opacity="0.45"/>
+                </Border.Effect>
+                <StackPanel Orientation="Horizontal" Margin="12,10,14,10">
+                    <Viewbox Width="18" Height="18" Margin="0,1,10,0">
+                        <Canvas Width="24" Height="24">
+                            <Path Fill="#53C028" Stretch="Uniform"
+                                  Data="M3.559 4.544c.355-.35.834-.544 1.33-.544H19.11c.496 0 .975.194 1.33.544.356.35.559.829.559 1.331v9.25c0 .502-.203.981-.559 1.331-.355.35-.834.544-1.33.544H15.5l-2.7 3.6a1 1 0 0 1-1.6 0L8.5 17H4.889c-.496 0-.975-.194-1.33-.544A1.868 1.868 0 0 1 3 15.125v-9.25c0-.502.203-.981.559-1.331ZM7.556 7.5a1 1 0 1 0 0 2h8a1 1 0 0 0 0-2h-8Zm0 3.5a1 1 0 1 0 0 2H12a1 1 0 1 0 0-2H7.556Z"/>
+                        </Canvas>
+                    </Viewbox>
+                    <StackPanel>
+                        <TextBlock Text="Notification Popup"
+                                   Foreground="#EDEDF0"
+                                   FontSize="12"
+                                   FontWeight="SemiBold"/>
+                        <TextBlock Text="Drag me like Discord"
+                                   Foreground="#8A9199"
+                                   FontSize="11"
+                                   Margin="0,2,0,0"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <Border x:Name="MutePreview"
+                    Width="36"
+                    Height="36"
+                    Background="#E6191B1F"
+                    BorderBrush="#2E3238"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Cursor="SizeAll"
+                    MouseLeftButtonDown="Preview_MouseLeftButtonDown"
+                    MouseLeftButtonUp="Preview_MouseLeftButtonUp">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="12" ShadowDepth="0" Color="#000000" Opacity="0.45"/>
+                </Border.Effect>
+                <TextBlock Text="&#xE74F;"
+                           FontFamily="Segoe MDL2 Assets"
+                           Foreground="#F87171"
+                           FontSize="16"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"/>
+            </Border>
+
+            <Border x:Name="FooterHint"
+                    Canvas.Left="24"
+                    Background="#CC111416"
+                    BorderBrush="#2E3238"
+                    BorderThickness="1"
+                    CornerRadius="12"
+                    Padding="14,10">
+                <TextBlock Text="Tip: positions are saved for this monitor and reused by both overlays."
+                           Foreground="#8A9199"
+                           FontSize="11"/>
+            </Border>
+        </Canvas>
+    </Grid>
+</Window>

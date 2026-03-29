@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
+using EchoX.Services;
 
 namespace EchoX
 {
@@ -12,18 +13,20 @@ namespace EchoX
         [DllImport("user32.dll")] static extern int GetWindowLong(IntPtr hwnd, int index);
         [DllImport("user32.dll")] static extern int SetWindowLong(IntPtr hwnd, int index, int newStyle);
 
-        public MuteIndicator()
+        public MuteIndicator(AppSettings? settings = null)
         {
             InitializeComponent();
-            PositionWindow();
+            PositionWindow(settings ?? new StorageService().LoadAppSettings());
             SourceInitialized += (s, e) => SetClickThrough();
         }
 
-        public void PositionWindow()
+        public void PositionWindow(AppSettings? settings = null)
         {
-            var wa = System.Windows.Forms.Screen.PrimaryScreen.WorkingArea;
-            Left = wa.Left + 8;
-            Top  = wa.Top + (wa.Height / 2) - (Height / 2);
+            var appSettings = settings ?? new StorageService().LoadAppSettings();
+            var screen = OverlayLayoutService.GetPreferredScreen();
+            var position = OverlayLayoutService.GetPosition(appSettings, Models.OverlayIds.MuteIndicator, Width, Height, screen);
+            Left = position.X;
+            Top = position.Y;
         }
 
         private void SetClickThrough()

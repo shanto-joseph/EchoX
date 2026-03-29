@@ -108,5 +108,6 @@ namespace EchoX.Services
         public EchoX.ViewModels.NotificationType NotificationType { get; set; } = EchoX.ViewModels.NotificationType.PopupScreen;
         public bool ShowMuteIndicator { get; set; } = true;
         public string LastUpdateChecked { get; set; } = "Never";
+        public List<OverlayPlacement> OverlayPlacements { get; set; } = new List<OverlayPlacement>();
     }
 }
