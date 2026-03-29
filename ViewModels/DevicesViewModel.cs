@@ -1,5 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Input;
 using EchoX.Models;
@@ -29,6 +30,8 @@ namespace EchoX.ViewModels
         private IDisposable? _inputVolumeWatcher;
         private IDisposable? _outputVolumeWatcher;
         private IDisposable? _deviceWatcher;
+        private readonly Dictionary<string, IDisposable> _muteWatchers = new Dictionary<string, IDisposable>();
+        private readonly System.Windows.Threading.DispatcherTimer _defaultDevicePollTimer;
         private double _targetPeak;
         private double _currentPeak;
         private System.Windows.Threading.DispatcherTimer? _smoothingTimer;
@@ -63,10 +66,19 @@ namespace EchoX.ViewModels
             // Step 2: Refresh the list in the background
             System.Threading.Tasks.Task.Run(() => LoadDevices());
 
-            // Step 3: Watch for new devices (USB plug/unplug) in realtime
-            _deviceWatcher = _audioEngine.WatchDevices(() => {
-                System.Threading.Tasks.Task.Run(() => LoadDevices());
+            // Step 3: Watch for device changes (plug/unplug + default device switch) in realtime
+            _deviceWatcher = _audioEngine.WatchDefaultDeviceChanged(() =>
+            {
+                RefreshDefaultDevices();
             });
+
+            _defaultDevicePollTimer = new System.Windows.Threading.DispatcherTimer(
+                System.Windows.Threading.DispatcherPriority.Background)
+            {
+                Interval = TimeSpan.FromMilliseconds(700)
+            };
+            _defaultDevicePollTimer.Tick += (s, e) => RefreshDefaultDevices();
+            _defaultDevicePollTimer.Start();
         }
 
         public ObservableCollection<AudioDevice> InputDevices  { get; } = new ObservableCollection<AudioDevice>();
@@ -157,6 +169,36 @@ namespace EchoX.ViewModels
                 _outputVolumeWatcher = _audioEngine.WatchVolume(device.Id, v => {
                     _outputVolume = v;
                     OnPropertyChanged(nameof(OutputVolume));
+                });
+            }
+        }
+
+        private void SyncMuteWatchers()
+        {
+            var currentDeviceIds = InputDevices
+                .Concat(OutputDevices)
+                .Select(d => d.Id)
+                .Distinct()
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var staleId in _muteWatchers.Keys.Where(id => !currentDeviceIds.Contains(id)).ToList())
+            {
+                _muteWatchers[staleId].Dispose();
+                _muteWatchers.Remove(staleId);
+            }
+
+            foreach (var device in InputDevices.Concat(OutputDevices))
+            {
+                if (_muteWatchers.ContainsKey(device.Id))
+                    continue;
+
+                var capturedDevice = device;
+                _muteWatchers[device.Id] = _audioEngine.WatchMute(device.Id, isMuted =>
+                {
+                    capturedDevice.IsMuted = isMuted;
+
+                    if (capturedDevice == _currentInputDevice)
+                        _mainWindowViewModel.OnMicrophoneMuteChanged(isMuted);
                 });
             }
         }
@@ -302,33 +344,12 @@ namespace EchoX.ViewModels
                     // Only update current devices from OS if no profile switch is in progress
                     if (_pendingSwitches == 0)
                     {
-                        // Use saved active profile's devices if available, else OS defaults
-                        var activeProfileId = _storageService.LoadActiveProfileId();
-                        AudioProfile? activeProfile = null;
-                        if (!string.IsNullOrEmpty(activeProfileId))
-                        {
-                            var allProfiles = _storageService.LoadProfiles();
-                            activeProfile = allProfiles.FirstOrDefault(p => p.Id == activeProfileId);
-                        }
-
-                        if (activeProfile != null)
-                        {
-                            _currentInputDevice  = InputDevices.FirstOrDefault(d => d.Id == activeProfile.InputDeviceId)
-                                                ?? (defaultMic != null ? InputDevices.FirstOrDefault(d => d.Id == defaultMic.Id.ToString()) : null)
-                                                ?? InputDevices.FirstOrDefault();
-                            _currentOutputDevice = OutputDevices.FirstOrDefault(d => d.Id == activeProfile.OutputDeviceId)
-                                                ?? (defaultSpeaker != null ? OutputDevices.FirstOrDefault(d => d.Id == defaultSpeaker.Id.ToString()) : null)
-                                                ?? OutputDevices.FirstOrDefault();
-                        }
-                        else
-                        {
-                            _currentInputDevice  = defaultMic != null
-                                ? InputDevices.FirstOrDefault(d => d.Id == defaultMic.Id.ToString()) ?? InputDevices.FirstOrDefault()
-                                : InputDevices.FirstOrDefault();
-                            _currentOutputDevice = defaultSpeaker != null
-                                ? OutputDevices.FirstOrDefault(d => d.Id == defaultSpeaker.Id.ToString()) ?? OutputDevices.FirstOrDefault()
-                                : OutputDevices.FirstOrDefault();
-                        }
+                        _currentInputDevice  = defaultMic != null
+                            ? InputDevices.FirstOrDefault(d => d.Id == defaultMic.Id.ToString()) ?? InputDevices.FirstOrDefault()
+                            : InputDevices.FirstOrDefault();
+                        _currentOutputDevice = defaultSpeaker != null
+                            ? OutputDevices.FirstOrDefault(d => d.Id == defaultSpeaker.Id.ToString()) ?? OutputDevices.FirstOrDefault()
+                            : OutputDevices.FirstOrDefault();
                     }
                     foreach (var d in InputDevices) d.IsCallDevice = false;
                     foreach (var d in OutputDevices) d.IsCallDevice = false;
@@ -349,6 +370,8 @@ namespace EchoX.ViewModels
                     _outputVolume = _currentOutputDevice != null ? _audioEngine.GetVolume(_currentOutputDevice.Id) : 100;
 
                     SetupWatchers();
+                    SyncMuteWatchers();
+                    UpdateDeviceMuteStates();
 
                     OnPropertyChanged(nameof(CurrentInputDevice));
                     OnPropertyChanged(nameof(CurrentOutputDevice));
@@ -456,15 +479,15 @@ namespace EchoX.ViewModels
             ActiveProfileName = match?.Name;
 
             var profVm = _mainWindowViewModel.ProfilesViewModel;
-            profVm.ActiveProfile = match != null
+            profVm.SetActiveProfileSilently(match != null
                 ? profVm.Profiles.FirstOrDefault(p => p.Id == match.Id)
-                : null;
+                : null);
         }
 
         public void UpdateDeviceMuteStates()
         {
-            // Refresh mute states of all input devices from hardware
-            foreach (var device in InputDevices)
+            // Refresh mute states of known devices from hardware
+            foreach (var device in InputDevices.Concat(OutputDevices))
             {
                 if (Guid.TryParse(device.Id, out var guid))
                 {
@@ -473,6 +496,81 @@ namespace EchoX.ViewModels
                         if (realDevice != null) device.IsMuted = realDevice.IsMuted;
                     } catch { }
                 }
+            }
+        }
+
+        private void RefreshDefaultDevices()
+        {
+            if (_pendingSwitches > 0) return;
+            try
+            {
+                var defaultMic     = _audioEngine.GetDefaultMicrophone();
+                var defaultSpeaker = _audioEngine.GetDefaultSpeaker();
+                var callMic        = _audioEngine.GetDefaultCommunicationsMicrophone();
+                var callSpeaker    = _audioEngine.GetDefaultCommunicationsSpeaker();
+                var defaultMicId = defaultMic?.Id.ToString();
+                var defaultSpeakerId = defaultSpeaker?.Id.ToString();
+
+                foreach (var device in InputDevices)
+                    device.IsDefault = device.Id == defaultMicId;
+
+                foreach (var device in OutputDevices)
+                    device.IsDefault = device.Id == defaultSpeakerId;
+
+                if (defaultMic != null)
+                {
+                    var match = InputDevices.FirstOrDefault(d => d.Id == defaultMic.Id.ToString());
+                    if (match != null && match != _currentInputDevice)
+                    {
+                        _currentInputDevice = match;
+                        OnPropertyChanged(nameof(CurrentInputDevice));
+                        UpdateVolumeAndWatchers(match, true);
+                        RefreshActiveProfile();
+                    }
+                }
+
+                if (defaultSpeaker != null)
+                {
+                    var match = OutputDevices.FirstOrDefault(d => d.Id == defaultSpeaker.Id.ToString());
+                    if (match != null && match != _currentOutputDevice)
+                    {
+                        _currentOutputDevice = match;
+                        OnPropertyChanged(nameof(CurrentOutputDevice));
+                        UpdateVolumeAndWatchers(match, false);
+                        RefreshActiveProfile();
+                    }
+                }
+
+                if (callMic != null)
+                {
+                    foreach (var d in InputDevices) d.IsCallDevice = false;
+                    var match = InputDevices.FirstOrDefault(d => d.Id == callMic.Id.ToString());
+                    if (match != null) { match.IsCallDevice = true; CurrentCallInputDevice = match; }
+                }
+                if (callSpeaker != null)
+                {
+                    foreach (var d in OutputDevices) d.IsCallDevice = false;
+                    var match = OutputDevices.FirstOrDefault(d => d.Id == callSpeaker.Id.ToString());
+                    if (match != null) { match.IsCallDevice = true; CurrentCallOutputDevice = match; }
+                }
+
+                UpdateDeviceMuteStates();
+
+                // Full reload only if device list changed (plug/unplug)
+                var micIds     = _audioEngine.GetMicrophones().Select(m => m.Id.ToString()).ToList();
+                var speakerIds = _audioEngine.GetSpeakers().Select(s => s.Id.ToString()).ToList();
+                bool listChanged = micIds.Any(id => InputDevices.All(d => d.Id != id))
+                                || speakerIds.Any(id => OutputDevices.All(d => d.Id != id))
+                                || InputDevices.Any(d => micIds.All(id => id != d.Id))
+                                || OutputDevices.Any(d => speakerIds.All(id => id != d.Id));
+                if (listChanged)
+                    System.Threading.Tasks.Task.Run(() => LoadDevices());
+                else
+                    SyncMuteWatchers();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"RefreshDefaultDevices failed: {ex.Message}");
             }
         }
 
