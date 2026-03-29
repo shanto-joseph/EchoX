@@ -39,9 +39,6 @@ namespace EchoX
             _viewModel = new MainWindowViewModel();
             DataContext = _viewModel;
 
-            _viewModel.ShowTrayNotification += (title, message) =>
-                _trayIcon.ShowBalloonTip(2000, title, message, ToolTipIcon.Info);
-
             SetupTrayIcon();
             SetupHotkeys();
             CheckStartupStatus();
@@ -477,6 +474,17 @@ namespace EchoX
             {
                 System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(e.Uri.AbsoluteUri) { UseShellExecute = true });
                 e.Handled = true;
+            }
+            catch { }
+        }
+
+        private void GitHubBtn_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var url = (sender as System.Windows.Controls.Button)?.Tag?.ToString();
+                if (!string.IsNullOrEmpty(url))
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true });
             }
             catch { }
         }

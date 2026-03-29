@@ -16,7 +16,6 @@ namespace EchoX.ViewModels
         public ICommand? ShowCommand { get; }
 
         // Event for showing tray notifications
-        public event Action<string, string>? ShowTrayNotification;
         public event Action<bool>? MicrophoneMuteChanged;
 
         // Tab ViewModels
@@ -35,8 +34,8 @@ namespace EchoX.ViewModels
             // Pass shared services to child ViewModels
             ProfilesViewModel  = new ProfilesViewModel(this, AudioEngine, _storageService);
             DevicesViewModel   = new DevicesViewModel(this, AudioEngine, _storageService);
-            SettingsViewModel  = new SettingsViewModel();
-            AboutViewModel     = new AboutViewModel();
+            SettingsViewModel  = new SettingsViewModel(_storageService);
+            AboutViewModel     = new AboutViewModel(_storageService);
             KeyBindsViewModel  = new KeyBindsViewModel(_storageService);
         }
 
@@ -62,7 +61,13 @@ namespace EchoX.ViewModels
                     break;
 
                 case NotificationType.WindowsNotification:
-                    ShowTrayNotification?.Invoke(title, message);
+                    System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        new Microsoft.Toolkit.Uwp.Notifications.ToastContentBuilder()
+                            .AddText(title)
+                            .AddText(message)
+                            .Show();
+                    }));
                     break;
             }
         }
