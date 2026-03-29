@@ -1,6 +1,7 @@
 using System;
 using System.Reflection;
 using System.Windows.Input;
+using EchoX.Services;
 using Microsoft.Win32;
 
 namespace EchoX.ViewModels
@@ -17,9 +18,20 @@ namespace EchoX.ViewModels
         private UpdatePreference  _updatePreference  = UpdatePreference.NotifyOnly;
         private NotificationType  _notificationType  = NotificationType.PopupScreen;
         private bool _showMuteIndicator = true;
+        private readonly StorageService? _storageService;
 
-        public SettingsViewModel()
+        public SettingsViewModel(StorageService? storageService = null)
         {
+            _storageService = storageService;
+
+            // Load persisted settings
+            if (_storageService != null)
+            {
+                var s = _storageService.LoadAppSettings();
+                _notificationType  = s.NotificationType;
+                _showMuteIndicator = s.ShowMuteIndicator;
+            }
+
             _launchWithWindows = GetStartupStatus();
             SetNotifyPopupCommand   = new RelayCommand(() => NotifyPopupScreen = true);
             SetNotifySoundCommand   = new RelayCommand(() => NotifySoundOnly   = true);
@@ -66,7 +78,7 @@ namespace EchoX.ViewModels
         public NotificationType NotificationType
         {
             get => _notificationType;
-            set => SetProperty(ref _notificationType, value);
+            set { if (SetProperty(ref _notificationType, value)) SaveSettings(); }
         }
 
         public bool NotifyPopupScreen
@@ -94,7 +106,17 @@ namespace EchoX.ViewModels
         public bool ShowMuteIndicator
         {
             get => _showMuteIndicator;
-            set => SetProperty(ref _showMuteIndicator, value);
+            set { if (SetProperty(ref _showMuteIndicator, value)) SaveSettings(); }
+        }
+
+        // ── Persistence ──
+        private void SaveSettings()
+        {
+            if (_storageService == null) return;
+            var s = _storageService.LoadAppSettings();
+            s.NotificationType  = _notificationType;
+            s.ShowMuteIndicator = _showMuteIndicator;
+            _storageService.SaveAppSettings(s);
         }
 
         // ── Registry helpers ──

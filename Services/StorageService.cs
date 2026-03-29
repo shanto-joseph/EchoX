@@ -88,5 +88,25 @@ namespace EchoX.Services
             if (!File.Exists(_keyBindsPath)) return null;
             try { return JsonConvert.DeserializeObject<EchoX.Models.KeyBindsSettings>(File.ReadAllText(_keyBindsPath)); } catch { return null; }
         }
+
+        public void SaveAppSettings(AppSettings settings)
+        {
+            string path = Path.Combine(_folderPath, "settings.json");
+            try { File.WriteAllText(path, JsonConvert.SerializeObject(settings, Formatting.Indented)); } catch { }
+        }
+
+        public AppSettings LoadAppSettings()
+        {
+            string path = Path.Combine(_folderPath, "settings.json");
+            if (!File.Exists(path)) return new AppSettings();
+            try { return JsonConvert.DeserializeObject<AppSettings>(File.ReadAllText(path)) ?? new AppSettings(); } catch { return new AppSettings(); }
+        }
+    }
+
+    public class AppSettings
+    {
+        public EchoX.ViewModels.NotificationType NotificationType { get; set; } = EchoX.ViewModels.NotificationType.PopupScreen;
+        public bool ShowMuteIndicator { get; set; } = true;
+        public string LastUpdateChecked { get; set; } = "Never";
     }
 }
