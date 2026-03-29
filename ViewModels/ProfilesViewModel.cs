@@ -99,7 +99,11 @@ namespace EchoX.ViewModels
 
                     if (!string.IsNullOrEmpty(activeId))
                     {
-                        ActiveProfile = Profiles.FirstOrDefault(p => p.Id == activeId);
+                        SetActiveProfileSilently(Profiles.FirstOrDefault(p => p.Id == activeId));
+                    }
+                    else
+                    {
+                        SetActiveProfileSilently(null);
                     }
                     
                     OnPropertyChanged(nameof(FilteredProfiles));
@@ -220,6 +224,13 @@ namespace EchoX.ViewModels
                     OnPropertyChanged(nameof(ActiveShortcutDisplay));
                 }
             }
+        }
+
+        public void SetActiveProfileSilently(AudioProfile? profile)
+        {
+            _isActivating = true;
+            ActiveProfile = profile;
+            _isActivating = false;
         }
 
         private void ActiveProfile_PropertyChanged(object? sender, PropertyChangedEventArgs e)

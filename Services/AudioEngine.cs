@@ -142,6 +142,48 @@ namespace EchoX.Services
 
         public bool IsDefaultMicMuted => _controller.Value.DefaultCaptureDevice?.IsMuted ?? false;
 
+        public IDisposable WatchMute(Action<bool> onMuteChanged)
+        {
+            return _controller.Value.DefaultCaptureDevice?
+                .MuteChanged.Subscribe(new MuteObserver(onMuteChanged))
+                ?? new NoopDisposable();
+        }
+
+        public IDisposable WatchMute(string deviceId, Action<bool> onMuteChanged)
+        {
+            if (!Guid.TryParse(deviceId, out var guid)) return new NoopDisposable();
+            var device = _controller.Value.GetDevice(guid);
+            if (device == null) return new NoopDisposable();
+            return device.MuteChanged.Subscribe(new MuteObserver(onMuteChanged));
+        }
+
+        public IDisposable WatchDefaultDeviceChanged(Action onChanged)
+        {
+            return _controller.Value.AudioDeviceChanged.Subscribe(new DefaultDeviceObserver(onChanged));
+        }
+
+        private class MuteObserver : IObserver<AudioSwitcher.AudioApi.DeviceMuteChangedArgs>
+        {
+            private readonly Action<bool> _callback;
+            public MuteObserver(Action<bool> callback) => _callback = callback;
+            public void OnNext(AudioSwitcher.AudioApi.DeviceMuteChangedArgs args) =>
+                System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() => _callback(args.IsMuted)));
+            public void OnError(Exception error) { }
+            public void OnCompleted() { }
+        }
+
+        private class DefaultDeviceObserver : IObserver<AudioSwitcher.AudioApi.DeviceChangedArgs>
+        {
+            private readonly Action _callback;
+            public DefaultDeviceObserver(Action callback) => _callback = callback;
+            public void OnNext(AudioSwitcher.AudioApi.DeviceChangedArgs args)
+            {
+                System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() => _callback()));
+            }
+            public void OnError(Exception error) { }
+            public void OnCompleted() { }
+        }
+
         public void StartMicTest(string deviceId, bool loopback)
         {
             try

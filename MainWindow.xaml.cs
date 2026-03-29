@@ -50,6 +50,13 @@ namespace EchoX
 
             _viewModel.MicrophoneMuteChanged += OnMicrophoneMuteChanged;
 
+            // Listen for mute changes from Windows settings (external)
+            _viewModel.AudioEngine.WatchMute(isMuted =>
+            {
+                OnMicrophoneMuteChanged(isMuted);
+                _viewModel.DevicesViewModel.UpdateDeviceMuteStates();
+            });
+
             // Set initial tray state
             OnMicrophoneMuteChanged(_viewModel.AudioEngine.IsDefaultMicMuted);
 
