@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media.Animation;
+using EchoX.Services;
 
 namespace EchoX
 {
@@ -19,7 +20,7 @@ namespace EchoX
         [DllImport("winmm.dll")] static extern bool PlaySound(string? sound, IntPtr hmod, uint fdwSound);
         private const uint SND_PURGE = 0x0040;
 
-        public NotificationPopup(string title, string message)
+        public NotificationPopup(string title, string message, AppSettings? settings = null)
         {
             InitializeComponent();
 
@@ -31,6 +32,8 @@ namespace EchoX
             if (title.Equals("Profile Switched", StringComparison.OrdinalIgnoreCase) &&
                 message.StartsWith("Activated: ", StringComparison.OrdinalIgnoreCase))
             {
+                LogoIcon.Visibility = Visibility.Collapsed;
+                NotificationIcon.Visibility = Visibility.Visible;
                 string profileName = message.Substring("Activated: ".Length);
                 MessageText.Inlines.Add(new System.Windows.Documents.Run("Activated: ")
                     { Foreground = new System.Windows.Media.SolidColorBrush(
@@ -42,6 +45,8 @@ namespace EchoX
             }
             else
             {
+                LogoIcon.Visibility = Visibility.Collapsed;
+                NotificationIcon.Visibility = Visibility.Visible;
                 MessageText.Inlines.Add(new System.Windows.Documents.Run(message)
                     { Foreground = new System.Windows.Media.SolidColorBrush(
                         (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#8A9199")) });
@@ -50,6 +55,7 @@ namespace EchoX
             if (title.Equals("Microphone", StringComparison.OrdinalIgnoreCase))
             {
                 LogoIcon.Visibility = Visibility.Collapsed;
+                NotificationIcon.Visibility = Visibility.Collapsed;
                 bool isMuted = message.Equals("Muted", StringComparison.OrdinalIgnoreCase);
                 if (isMuted)
                 {
@@ -64,10 +70,6 @@ namespace EchoX
                 }
             }
 
-            var wa = System.Windows.Forms.Screen.PrimaryScreen.WorkingArea;
-            Left = wa.Right - Width - 16;
-            Top  = wa.Top + 16;
-
             _timer = new System.Windows.Threading.DispatcherTimer
             {
                 Interval = TimeSpan.FromSeconds(2)
@@ -78,6 +80,14 @@ namespace EchoX
 
             Loaded += (s, e) =>
             {
+                var appSettings = settings ?? new StorageService().LoadAppSettings();
+                UpdateLayout();
+                var popupHeight = ActualHeight > 0 ? ActualHeight : 64;
+                var screen = OverlayLayoutService.GetPreferredScreen();
+                var position = OverlayLayoutService.GetPosition(appSettings, Models.OverlayIds.NotificationPopup, Width, popupHeight, screen);
+                Left = position.X;
+                Top = position.Y;
+
                 Opacity = 0;
                 var fadeIn = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(200));
                 BeginAnimation(OpacityProperty, fadeIn);

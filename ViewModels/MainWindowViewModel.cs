@@ -46,7 +46,7 @@ namespace EchoX.ViewModels
                 case NotificationType.PopupScreen:
                     System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
                     {
-                        var popup = new EchoX.NotificationPopup(title, message);
+                        var popup = new EchoX.NotificationPopup(title, message, SettingsViewModel.GetAppSettingsSnapshot());
                         popup.Show();
                     }));
                     AudioEngine.PlayNotificationSound();

@@ -123,7 +123,7 @@ namespace EchoX
                 {
                     if (_muteIndicator == null || !_muteIndicator.IsLoaded)
                     {
-                        _muteIndicator = new MuteIndicator();
+                        _muteIndicator = new MuteIndicator(_viewModel.SettingsViewModel.GetAppSettingsSnapshot());
                         _muteIndicator.Show();
                     }
                 }
@@ -494,6 +494,18 @@ namespace EchoX
                     System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true });
             }
             catch { }
+        }
+
+        private void ArrangeOverlaysBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var arranger = new OverlayArrangementWindow(_viewModel.SettingsViewModel)
+            {
+                Owner = this
+            };
+
+            var applied = arranger.ShowDialog();
+            if (applied == true && _muteIndicator != null && _muteIndicator.IsLoaded)
+                _muteIndicator.PositionWindow(_viewModel.SettingsViewModel.GetAppSettingsSnapshot());
         }
 
         private bool _isRecordingShortcut = false;
