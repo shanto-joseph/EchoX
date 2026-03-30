@@ -499,6 +499,24 @@ namespace EchoX.ViewModels
             }
         }
 
+        public List<AppAudioSessionInfo> GetCurrentOutputSessions()
+        {
+            if (_currentOutputDevice == null)
+                return new List<AppAudioSessionInfo>();
+
+            return _audioEngine.GetOutputSessions(_currentOutputDevice.Id);
+        }
+
+        public void SetOutputSessionVolume(string deviceId, string sessionId, double volume)
+        {
+            _audioEngine.SetOutputSessionVolume(deviceId, sessionId, volume);
+        }
+
+        public void SetOutputSessionMute(string deviceId, string sessionId, bool isMuted)
+        {
+            _audioEngine.SetOutputSessionMute(deviceId, sessionId, isMuted);
+        }
+
         private void RefreshDefaultDevices()
         {
             if (_pendingSwitches > 0) return;

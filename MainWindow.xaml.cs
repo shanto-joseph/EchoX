@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows;
@@ -10,8 +11,6 @@ using Microsoft.Win32;
 using System.Drawing;
 using System.Windows.Forms;
 using System.Windows.Input;
-using NHotkey;
-using NHotkey.Wpf;
 
 namespace EchoX
 {
@@ -28,10 +27,19 @@ namespace EchoX
         private Icon? _activeIcon;
         private Icon? _mutedIcon;
         private MuteIndicator? _muteIndicator;
+        private AppVolumeMixerWindow? _appVolumeMixerWindow;
         private int _lastSelectedTabIndex = 0;
+        private IntPtr _globalHotkeyHook = IntPtr.Zero;
+        private LowLevelHookProc? _globalHotkeyProc;
+        private readonly HashSet<int> _pressedKeyVks = new HashSet<int>();
+        private readonly HashSet<int> _capturedGestureKeyVks = new HashSet<int>();
+        private readonly HashSet<int> _recordedProfileKeyVks = new HashSet<int>();
+        private string? _lastTriggeredGesture;
 
         [DllImport("user32.dll", CharSet = CharSet.Auto)]
         private static extern bool DestroyIcon(IntPtr handle);
+        [DllImport("user32.dll")]
+        private static extern short GetKeyState(int nVirtKey);
 
         public MainWindow()
         {
@@ -71,6 +79,8 @@ namespace EchoX
                 _mouseProc = MouseHookCallback;
                 using var mod = System.Diagnostics.Process.GetCurrentProcess().MainModule!;
                 _globalMouseHook = SetWindowsHookEx(WH_MOUSE_LL, _mouseProc, GetModuleHandle(mod.ModuleName!), 0);
+                _globalHotkeyProc = GlobalHotkeyHookCallback;
+                _globalHotkeyHook = SetWindowsHookEx(WH_KEYBOARD_LL, _globalHotkeyProc, GetModuleHandle(mod.ModuleName!), 0);
             };
         }
 
@@ -192,41 +202,7 @@ namespace EchoX
         private void SetupHotkeys()
         {
             var kb = _viewModel.KeyBindsViewModel;
-            RegisterGlobalHotkeys(kb);
-            kb.HotkeysChanged += () => RegisterGlobalHotkeys(kb);
-        }
-
-        private void RegisterGlobalHotkeys(ViewModels.KeyBindsViewModel kb)
-        {
-            if (kb.IsOpenAppEnabled && kb.OpenAppKey != System.Windows.Input.Key.None)
-                TryRegisterHotkey("OpenApp", kb.OpenAppKey, kb.OpenAppMods, OpenApp);
-            else
-                try { HotkeyManager.Current.Remove("OpenApp"); } catch { }
-
-            if (kb.IsCycleEnabled && kb.CycleKey != System.Windows.Input.Key.None)
-                TryRegisterHotkey("CycleAudio", kb.CycleKey, kb.CycleMods, CycleProfiles);
-            else
-                try { HotkeyManager.Current.Remove("CycleAudio"); } catch { }
-
-            if (kb.IsMuteEnabled && kb.MuteKey != System.Windows.Input.Key.None)
-                TryRegisterHotkey("MuteMic", kb.MuteKey, kb.MuteMods, ToggleMicMute);
-            else
-                try { HotkeyManager.Current.Remove("MuteMic"); } catch { }
-        }
-
-        private bool TryRegisterHotkey(string name, Key key, ModifierKeys modifiers, EventHandler<HotkeyEventArgs> handler)
-        {
-            try
-            {
-                HotkeyManager.Current.AddOrReplace(name, key, modifiers, handler);
-                return true;
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Failed to register hotkey {name}: {ex.Message}");
-                _trayIcon?.ShowBalloonTip(2000, "EchoX Hotkey", $"Failed to register {name}. It may be in use by another app.", ToolTipIcon.Warning);
-                return false;
-            }
+            kb.HotkeysChanged += () => _lastTriggeredGesture = null;
         }
 
         private void UpdateHotkeyStatus(bool cycleRegistered, bool muteRegistered) { }
@@ -292,6 +268,7 @@ namespace EchoX
             _isExiting = true;
             _muteIndicator?.Close();
             if (_globalMouseHook != IntPtr.Zero) UnhookWindowsHookEx(_globalMouseHook);
+            if (_globalHotkeyHook != IntPtr.Zero) UnhookWindowsHookEx(_globalHotkeyHook);
             if (_shortcutKbHook != IntPtr.Zero) UnhookWindowsHookEx(_shortcutKbHook);
             if (_globalKbCapHook != IntPtr.Zero) UnhookWindowsHookEx(_globalKbCapHook);
             _trayIcon?.Dispose();
@@ -300,23 +277,25 @@ namespace EchoX
         }
 
         // Hotkey handler: Ctrl + Alt + S cycles through profiles
-        private void CycleProfiles(object sender, HotkeyEventArgs e)
+        private void CycleProfiles()
         {
             _viewModel.ProfilesViewModel.CycleProfiles();
-            e.Handled = true; // Tell Windows we handled the key press
         }
 
         // ================= NEW: MUTE PANIC BUTTON =================
-        private void ToggleMicMute(object sender, HotkeyEventArgs e)
+        private void ToggleMicMute()
         {
             _viewModel.ProfilesViewModel.ToggleMicMute();
-            e.Handled = true;
         }
 
-        private void OpenApp(object sender, HotkeyEventArgs e)
+        private void OpenApp()
         {
             ShowApp();
-            e.Handled = true;
+        }
+
+        private void OpenMixerPopup()
+        {
+            ShowOutputMixerWindow();
         }
 
         private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -380,6 +359,8 @@ namespace EchoX
 
         private void CleanupLeavingTab(int tabIndex)
         {
+            CloseOutputMixerWindow();
+
             if (tabIndex == 1)
             {
                 if (_isRecordingShortcut)
@@ -392,7 +373,7 @@ namespace EchoX
             if (tabIndex == 2)
             {
                 var kb = _viewModel.KeyBindsViewModel;
-                if (kb.IsCapturingCycle || kb.IsCapturingMute)
+                if (kb.IsCapturingCycle || kb.IsCapturingMute || kb.IsCapturingMixer || kb.IsCapturingOpenApp)
                     kb.CancelCapture();
 
                 if (_capturingProfile != null)
@@ -508,6 +489,57 @@ namespace EchoX
                 _muteIndicator.PositionWindow(_viewModel.SettingsViewModel.GetAppSettingsSnapshot());
         }
 
+        private void OutputMixerBtn_Click(object sender, RoutedEventArgs e)
+        {
+            if (_appVolumeMixerWindow != null && _appVolumeMixerWindow.IsLoaded)
+            {
+                CloseOutputMixerWindow();
+                return;
+            }
+
+            ShowOutputMixerWindow();
+        }
+
+        private void ShowOutputMixerWindow()
+        {
+            if (_appVolumeMixerWindow != null && _appVolumeMixerWindow.IsLoaded)
+            {
+                _appVolumeMixerWindow.Activate();
+                return;
+            }
+
+            _appVolumeMixerWindow = new AppVolumeMixerWindow(_viewModel.DevicesViewModel);
+            _appVolumeMixerWindow.ShowCenteredOnCurrentScreen();
+
+            if (IsVisible)
+                PreviewMouseDown += MainWindow_PreviewMouseDown;
+
+            _appVolumeMixerWindow.Closed += (s, args) =>
+            {
+                PreviewMouseDown -= MainWindow_PreviewMouseDown;
+                _appVolumeMixerWindow = null;
+            };
+
+            _appVolumeMixerWindow.Show();
+            _appVolumeMixerWindow.Activate();
+        }
+
+        private void CloseOutputMixerWindow()
+        {
+            if (_appVolumeMixerWindow == null || !_appVolumeMixerWindow.IsLoaded)
+                return;
+
+            PreviewMouseDown -= MainWindow_PreviewMouseDown;
+            _appVolumeMixerWindow.BeginClose();
+            _appVolumeMixerWindow = null;
+        }
+
+        private void MainWindow_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (_appVolumeMixerWindow != null && _appVolumeMixerWindow.IsLoaded)
+                CloseOutputMixerWindow();
+        }
+
         private bool _isRecordingShortcut = false;
         private bool _isCapturingGlobal = false;
         private EchoX.Models.AudioProfile? _capturingProfile = null;
@@ -528,7 +560,7 @@ namespace EchoX
         private struct MSLLHOOKSTRUCT { public System.Drawing.Point pt; public int mouseData, flags, time; public IntPtr dwExtraInfo; }
 
         private const int WH_KEYBOARD_LL = 13, WH_MOUSE_LL = 14;
-        private const int WM_KEYDOWN = 0x100, WM_SYSKEYDOWN = 0x104;
+        private const int WM_KEYDOWN = 0x100, WM_KEYUP = 0x101, WM_SYSKEYDOWN = 0x104, WM_SYSKEYUP = 0x105;
         private const int WM_XBUTTONDOWN = 0x020B;
         private const int XBUTTON1 = 1, XBUTTON2 = 2;
 
@@ -543,6 +575,7 @@ namespace EchoX
         private void StartRecording()
         {
             _isRecordingShortcut = true;
+            _recordedProfileKeyVks.Clear();
 
             var btn = RecordShortcutBtn;
             var idle = FindVisualChild<System.Windows.Controls.StackPanel>(btn, "IdlePanel");
@@ -551,7 +584,7 @@ namespace EchoX
             if (rec  != null) rec.Visibility  = Visibility.Visible;
 
             using var mod = System.Diagnostics.Process.GetCurrentProcess().MainModule!;
-            _kbProc = KbHookCallback;
+            _kbProc = ProfileGestureKbHookCallback;
             _shortcutKbHook = SetWindowsHookEx(WH_KEYBOARD_LL, _kbProc, GetModuleHandle(mod.ModuleName!), 0);
 
             // Mouse hook stays alive globally — only install once
@@ -565,6 +598,7 @@ namespace EchoX
         private void StopRecording()
         {
             _isRecordingShortcut = false;
+            _recordedProfileKeyVks.Clear();
             if (_shortcutKbHook != IntPtr.Zero) { UnhookWindowsHookEx(_shortcutKbHook); _shortcutKbHook = IntPtr.Zero; }
 
             var btn = RecordShortcutBtn;
@@ -577,6 +611,7 @@ namespace EchoX
         public void StartCapturingGlobal()
         {
             _isCapturingGlobal = true;
+            _capturedGestureKeyVks.Clear();
             if (_globalKbCapHook == IntPtr.Zero)
             {
                 using var mod = System.Diagnostics.Process.GetCurrentProcess().MainModule!;
@@ -589,6 +624,7 @@ namespace EchoX
         {
             _isCapturingGlobal = false;
             _capturingProfile = null;
+            _capturedGestureKeyVks.Clear();
             if (_globalKbCapHook != IntPtr.Zero) { UnhookWindowsHookEx(_globalKbCapHook); _globalKbCapHook = IntPtr.Zero; }
         }
 
@@ -596,23 +632,37 @@ namespace EchoX
 
         private IntPtr GlobalKbCapCallback(int nCode, IntPtr wParam, IntPtr lParam)
         {
-            if (nCode >= 0 && _isCapturingGlobal &&
-                (wParam == (IntPtr)WM_KEYDOWN || wParam == (IntPtr)WM_SYSKEYDOWN))
+            if (nCode >= 0 && _isCapturingGlobal)
             {
-                var info = System.Runtime.InteropServices.Marshal.PtrToStructure<KBDLLHOOKSTRUCT>(lParam);
-                if (System.Array.IndexOf(_modifierVKeys, (int)info.vkCode) >= 0)
+                int message = wParam.ToInt32();
+                bool isKeyDown = message == WM_KEYDOWN || message == WM_SYSKEYDOWN;
+                bool isKeyUp = message == WM_KEYUP || message == WM_SYSKEYUP;
+                if (!isKeyDown && !isKeyUp)
                     return CallNextHookEx(_globalKbCapHook, nCode, wParam, lParam);
 
-                var key  = System.Windows.Input.KeyInterop.KeyFromVirtualKey((int)info.vkCode);
-                var mods = System.Windows.Input.Keyboard.Modifiers;
+                var info = System.Runtime.InteropServices.Marshal.PtrToStructure<KBDLLHOOKSTRUCT>(lParam);
+                int vk = (int)info.vkCode;
+
+                if (isKeyDown)
+                    _capturedGestureKeyVks.Add(vk);
+                else
+                    _capturedGestureKeyVks.Remove(vk);
+
+                if (System.Array.IndexOf(_modifierVKeys, vk) >= 0)
+                    return CallNextHookEx(_globalKbCapHook, nCode, wParam, lParam);
+
                 var profile = _capturingProfile;
+                var gesture = BuildGestureFromCaptureKeys(vk);
+
+                if (!isKeyUp)
+                    return CallNextHookEx(_globalKbCapHook, nCode, wParam, lParam);
 
                 Dispatcher.BeginInvoke(new Action(() =>
                 {
                     if (profile != null)
-                        _viewModel.ProfilesViewModel.SaveProfileShortcut(profile, key, mods, null);
+                        _viewModel.ProfilesViewModel.SaveProfileShortcut(profile, gesture, null);
                     else
-                        _viewModel.KeyBindsViewModel.TryCapture(key, mods);
+                        _viewModel.KeyBindsViewModel.TryCaptureGesture(gesture);
                     StopCapturingGlobal();
                 }));
                 return (IntPtr)1;
@@ -621,6 +671,11 @@ namespace EchoX
         }
 
         private static readonly int[] _modifierVKeys = { 0x10, 0x11, 0x12, 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0x5B, 0x5C }; // Shift,Ctrl,Alt variants + Win
+        private const int VK_SHIFT = 0x10;
+        private const int VK_CONTROL = 0x11;
+        private const int VK_MENU = 0x12;
+        private const int VK_LWIN = 0x5B;
+        private const int VK_RWIN = 0x5C;
 
         private IntPtr KbHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
         {
@@ -634,12 +689,13 @@ namespace EchoX
                     return CallNextHookEx(_shortcutKbHook, nCode, wParam, lParam);
 
                 var key  = System.Windows.Input.KeyInterop.KeyFromVirtualKey(vk);
-                var mods = System.Windows.Input.Keyboard.Modifiers;
+                var mods = GetCurrentModifierKeys();
+                var gesture = KeyBindsViewModel.BuildGesture(mods, key);
 
                 Dispatcher.BeginInvoke(new Action(() =>
                 {
                     // Check for conflict before assigning
-                    string? conflict = _viewModel.ProfilesViewModel.GetShortcutConflict(key, mods, null);
+                    string? conflict = _viewModel.ProfilesViewModel.GetShortcutConflict(gesture, null, null);
                     if (conflict != null)
                     {
                         _viewModel.ProfilesViewModel.SetShortcutFromKey(key, mods); // still set it
@@ -655,6 +711,224 @@ namespace EchoX
                 return (IntPtr)1;
             }
             return CallNextHookEx(_shortcutKbHook, nCode, wParam, lParam);
+        }
+
+        private IntPtr ProfileGestureKbHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
+        {
+            if (nCode < 0)
+                return CallNextHookEx(_shortcutKbHook, nCode, wParam, lParam);
+
+            bool isKeyDown = wParam == (IntPtr)WM_KEYDOWN || wParam == (IntPtr)WM_SYSKEYDOWN;
+            bool isKeyUp = wParam == (IntPtr)WM_KEYUP || wParam == (IntPtr)WM_SYSKEYUP;
+            if (!isKeyDown && !isKeyUp)
+                return CallNextHookEx(_shortcutKbHook, nCode, wParam, lParam);
+
+            var info = System.Runtime.InteropServices.Marshal.PtrToStructure<KBDLLHOOKSTRUCT>(lParam);
+            int vk = (int)info.vkCode;
+
+            if (isKeyDown)
+            {
+                _recordedProfileKeyVks.Add(vk);
+                if (System.Array.IndexOf(_modifierVKeys, vk) >= 0)
+                    return CallNextHookEx(_shortcutKbHook, nCode, wParam, lParam);
+                return (IntPtr)1;
+            }
+
+            _recordedProfileKeyVks.Remove(vk);
+            if (System.Array.IndexOf(_modifierVKeys, vk) >= 0)
+                return CallNextHookEx(_shortcutKbHook, nCode, wParam, lParam);
+
+            var gesture = BuildGestureFromRecordedKeys(vk);
+
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                var excludeProfileId = _viewModel.ProfilesViewModel.SelectedProfile?.Id;
+                string? conflict = _viewModel.ProfilesViewModel.GetShortcutConflict(gesture, null, excludeProfileId);
+                if (conflict != null)
+                {
+                    _viewModel.ProfilesViewModel.SetShortcutFromGesture(gesture);
+                    _viewModel.ProfilesViewModel.ShortcutWarning = $"Already used by \"{conflict}\"";
+                }
+                else
+                {
+                    _viewModel.ProfilesViewModel.ShortcutWarning = null;
+                    _viewModel.ProfilesViewModel.SetShortcutFromGesture(gesture);
+                }
+                StopRecording();
+            }));
+            return (IntPtr)1;
+        }
+
+        private static ModifierKeys GetCurrentModifierKeys()
+        {
+            var modifiers = ModifierKeys.None;
+
+            if (IsKeyPressed(VK_CONTROL))
+                modifiers |= ModifierKeys.Control;
+            if (IsKeyPressed(VK_MENU))
+                modifiers |= ModifierKeys.Alt;
+            if (IsKeyPressed(VK_SHIFT))
+                modifiers |= ModifierKeys.Shift;
+            if (IsKeyPressed(VK_LWIN) || IsKeyPressed(VK_RWIN))
+                modifiers |= ModifierKeys.Windows;
+
+            return modifiers;
+        }
+
+        private static ModifierKeys GetModifierKeysFromVks(IEnumerable<int> virtualKeys)
+        {
+            var keySet = new HashSet<int>(virtualKeys);
+            var modifiers = ModifierKeys.None;
+
+            bool hasLeftControl = keySet.Contains(0xA2);
+            bool hasRightControl = keySet.Contains(0xA3);
+            bool hasGenericControl = keySet.Contains(0x11);
+            bool hasLeftAlt = keySet.Contains(0xA4);
+            bool hasRightAlt = keySet.Contains(0xA5);
+            bool hasGenericAlt = keySet.Contains(0x12);
+
+            bool altGrLikeChord = hasRightAlt &&
+                !hasLeftAlt &&
+                !hasRightControl &&
+                (hasLeftControl || hasGenericControl);
+
+            if ((hasLeftControl || hasRightControl || hasGenericControl) && !altGrLikeChord)
+                modifiers |= ModifierKeys.Control;
+            if (hasLeftAlt || hasRightAlt || hasGenericAlt)
+                modifiers |= ModifierKeys.Alt;
+            if (keySet.Contains(0x10) || keySet.Contains(0xA0) || keySet.Contains(0xA1))
+                modifiers |= ModifierKeys.Shift;
+            if (keySet.Contains(0x5B) || keySet.Contains(0x5C))
+                modifiers |= ModifierKeys.Windows;
+
+            return modifiers;
+        }
+
+        private static bool IsKeyPressed(int virtualKey)
+        {
+            return (GetKeyState(virtualKey) & 0x8000) != 0;
+        }
+
+        private IntPtr GlobalHotkeyHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
+        {
+            if (nCode < 0)
+                return CallNextHookEx(_globalHotkeyHook, nCode, wParam, lParam);
+
+            int message = wParam.ToInt32();
+            bool isKeyDown = message == WM_KEYDOWN || message == WM_SYSKEYDOWN;
+            bool isKeyUp = message == WM_KEYUP || message == WM_SYSKEYUP;
+            if (!isKeyDown && !isKeyUp)
+                return CallNextHookEx(_globalHotkeyHook, nCode, wParam, lParam);
+
+            var info = System.Runtime.InteropServices.Marshal.PtrToStructure<KBDLLHOOKSTRUCT>(lParam);
+            int vk = (int)info.vkCode;
+
+            if (isKeyDown)
+                _pressedKeyVks.Add(vk);
+            else
+                _pressedKeyVks.Remove(vk);
+
+            if (_isCapturingGlobal || _isRecordingShortcut || _isExiting)
+                return CallNextHookEx(_globalHotkeyHook, nCode, wParam, lParam);
+
+            var gesture = BuildGestureFromPressedKeys();
+            if (isKeyUp)
+            {
+                if (!string.Equals(_lastTriggeredGesture, gesture, StringComparison.OrdinalIgnoreCase))
+                    _lastTriggeredGesture = null;
+                return CallNextHookEx(_globalHotkeyHook, nCode, wParam, lParam);
+            }
+
+            if (string.IsNullOrWhiteSpace(gesture))
+                return CallNextHookEx(_globalHotkeyHook, nCode, wParam, lParam);
+
+            var action = MatchGlobalGesture(gesture);
+            if (action != null)
+            {
+                if (string.Equals(_lastTriggeredGesture, gesture, StringComparison.OrdinalIgnoreCase))
+                    return (IntPtr)1;
+
+                _lastTriggeredGesture = gesture;
+                Dispatcher.BeginInvoke(action);
+                return (IntPtr)1;
+            }
+
+            if (!_viewModel.ProfilesViewModel.HandleGesture(gesture))
+                return CallNextHookEx(_globalHotkeyHook, nCode, wParam, lParam);
+
+            if (string.Equals(_lastTriggeredGesture, gesture, StringComparison.OrdinalIgnoreCase))
+                return (IntPtr)1;
+
+            _lastTriggeredGesture = gesture;
+            return (IntPtr)1;
+        }
+
+        private string BuildGestureFromPressedKeys(int? includeVk = null)
+        {
+            var allVks = _pressedKeyVks
+                .Concat(includeVk.HasValue ? new[] { includeVk.Value } : Array.Empty<int>())
+                .Distinct()
+                .ToArray();
+
+            var keys = allVks
+                .Where(vk => Array.IndexOf(_modifierVKeys, vk) < 0)
+                .Select(vk => KeyInterop.KeyFromVirtualKey(vk))
+                .Where(key => key != Key.None && key != Key.System)
+                .Distinct()
+                .ToArray();
+
+            return KeyBindsViewModel.BuildGesture(GetModifierKeysFromVks(allVks), keys);
+        }
+
+        private string BuildGestureFromCaptureKeys(int? includeVk = null)
+        {
+            var allVks = _capturedGestureKeyVks
+                .Concat(includeVk.HasValue ? new[] { includeVk.Value } : Array.Empty<int>())
+                .Distinct()
+                .ToArray();
+
+            var keys = allVks
+                .Where(vk => Array.IndexOf(_modifierVKeys, vk) < 0)
+                .Select(vk => KeyInterop.KeyFromVirtualKey(vk))
+                .Where(key => key != Key.None && key != Key.System)
+                .Distinct()
+                .ToArray();
+
+            return KeyBindsViewModel.BuildGesture(GetModifierKeysFromVks(allVks), keys);
+        }
+
+        private string BuildGestureFromRecordedKeys(int? includeVk = null)
+        {
+            var allVks = _recordedProfileKeyVks
+                .Concat(includeVk.HasValue ? new[] { includeVk.Value } : Array.Empty<int>())
+                .Distinct()
+                .ToArray();
+
+            var keys = allVks
+                .Where(vk => Array.IndexOf(_modifierVKeys, vk) < 0)
+                .Select(vk => KeyInterop.KeyFromVirtualKey(vk))
+                .Where(key => key != Key.None && key != Key.System)
+                .Distinct()
+                .ToArray();
+
+            return KeyBindsViewModel.BuildGesture(GetModifierKeysFromVks(allVks), keys);
+        }
+
+        private Action? MatchGlobalGesture(string gesture)
+        {
+            var kb = _viewModel.KeyBindsViewModel;
+            gesture = KeyBindsViewModel.NormalizeGesture(gesture);
+
+            if (kb.IsOpenAppEnabled && string.Equals(kb.OpenAppGesture, gesture, StringComparison.OrdinalIgnoreCase))
+                return OpenApp;
+            if (kb.IsCycleEnabled && string.Equals(kb.CycleGesture, gesture, StringComparison.OrdinalIgnoreCase))
+                return CycleProfiles;
+            if (kb.IsMuteEnabled && string.Equals(kb.MuteGesture, gesture, StringComparison.OrdinalIgnoreCase))
+                return ToggleMicMute;
+            if (kb.IsMixerEnabled && string.Equals(kb.MixerGesture, gesture, StringComparison.OrdinalIgnoreCase))
+                return OpenMixerPopup;
+
+            return null;
         }
 
         private IntPtr MouseHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
@@ -674,7 +948,7 @@ namespace EchoX
                     }
                     else if (_isCapturingGlobal && _capturingProfile != null)
                     {
-                        _viewModel.ProfilesViewModel.SaveProfileShortcut(_capturingProfile, null, System.Windows.Input.ModifierKeys.None, keyName);
+                        _viewModel.ProfilesViewModel.SaveProfileShortcut(_capturingProfile, null, keyName);
                         StopCapturingGlobal();
                     }
                     else
@@ -714,6 +988,14 @@ namespace EchoX
             var kb = _viewModel.KeyBindsViewModel;
             if (kb.IsCapturingOpenApp) { kb.CancelCapture(); StopCapturingGlobal(); return; }
             kb.StartCaptureOpenAppCommand.Execute(null);
+            StartCapturingGlobal();
+        }
+
+        private void MixerCaptureBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var kb = _viewModel.KeyBindsViewModel;
+            if (kb.IsCapturingMixer) { kb.CancelCapture(); StopCapturingGlobal(); return; }
+            kb.StartCaptureMixerCommand.Execute(null);
             StartCapturingGlobal();
         }
 

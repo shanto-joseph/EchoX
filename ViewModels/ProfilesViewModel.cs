@@ -91,6 +91,7 @@ namespace EchoX.ViewModels
                             match.OutputDeviceId = profile.OutputDeviceId;
                             match.CallInputDeviceId = profile.CallInputDeviceId;
                             match.CallOutputDeviceId = profile.CallOutputDeviceId;
+                            match.ShortcutGesture = profile.ShortcutGesture;
                             match.ShortcutKey = profile.ShortcutKey;
                             match.ShortcutModifiers = profile.ShortcutModifiers;
                             match.ShortcutMouseButton = profile.ShortcutMouseButton;
@@ -236,6 +237,7 @@ namespace EchoX.ViewModels
         private void ActiveProfile_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(AudioProfile.ShortcutKey) ||
+                e.PropertyName == nameof(AudioProfile.ShortcutGesture) ||
                 e.PropertyName == nameof(AudioProfile.ShortcutModifiers) ||
                 e.PropertyName == nameof(AudioProfile.ShortcutMouseButton) ||
                 e.PropertyName == nameof(AudioProfile.ShortcutDisplay))
@@ -285,25 +287,9 @@ namespace EchoX.ViewModels
             {
                 var p = ActiveProfile;
                 if (p == null) return "None";
-                if (!string.IsNullOrEmpty(p.ShortcutMouseButton))
-                    return p.ShortcutMouseButton == "XButton1" ? "Mouse Button 4" : "Mouse Button 5";
-                if (string.IsNullOrEmpty(p.ShortcutKey)) return "None";
-
-                var parts = new System.Collections.Generic.List<string>();
-                var shortcutModifiers = p.ShortcutModifiers;
-                if (shortcutModifiers != null && shortcutModifiers.Length > 0)
-                    foreach (var part in shortcutModifiers.Split(','))
-                    {
-                        var t = part.Trim();
-                        if (t == "Control") parts.Add("Ctrl");
-                        else if (t == "Windows") parts.Add("Win");
-                        else if (!string.IsNullOrEmpty(t)) parts.Add(t);
-                    }
-                if (System.Enum.TryParse<System.Windows.Input.Key>(p.ShortcutKey, true, out var key))
-                    parts.Add(KeyToDisplayString(key));
-                else
-                    parts.Add(p.ShortcutKey ?? string.Empty);
-                return string.Join(" + ", parts);
+                return string.Equals(p.ShortcutDisplay, "No shortcut", StringComparison.OrdinalIgnoreCase)
+                    ? "None"
+                    : p.ShortcutDisplay;
             }
         }
 
@@ -315,14 +301,23 @@ namespace EchoX.ViewModels
         }
 
         /// <summary>Returns the name of the profile already using this shortcut, or null if free.</summary>
-        public string? GetShortcutConflict(System.Windows.Input.Key key, System.Windows.Input.ModifierKeys mods, string? excludeProfileId)
+        public string? GetShortcutConflict(string? gesture, string? mouseButton, string? excludeProfileId)
         {
-            string keyStr  = key.ToString();
-            string modStr  = mods.ToString();
+            var normalizedGesture = string.IsNullOrWhiteSpace(gesture)
+                ? null
+                : KeyBindsViewModel.NormalizeGesture(gesture!);
+
             foreach (var p in Profiles)
             {
                 if (p.Id == excludeProfileId) continue;
-                if (p.ShortcutKey == keyStr && p.ShortcutModifiers == modStr)
+
+                if (!string.IsNullOrWhiteSpace(mouseButton) &&
+                    string.Equals(p.ShortcutMouseButton, mouseButton, StringComparison.OrdinalIgnoreCase))
+                    return p.Name;
+
+                var profileGesture = GetEffectiveProfileGesture(p);
+                if (!string.IsNullOrWhiteSpace(normalizedGesture) &&
+                    string.Equals(profileGesture, normalizedGesture, StringComparison.OrdinalIgnoreCase))
                     return p.Name;
             }
             return null;
@@ -332,12 +327,12 @@ namespace EchoX.ViewModels
         public void SetMouseShortcut(string displayLabel, string keyName)
         {
             ShortcutText = displayLabel;
-            _pendingKey = null; // no keyboard key
-            _pendingModifiers = System.Windows.Input.ModifierKeys.None;
+            _pendingGesture = null;
             _pendingMouseButton = keyName;
         }
 
         private string? _pendingMouseButton;
+        private string? _pendingGesture;
 
         // Called from the UI's KeyDown handler
         public void SetShortcutFromKey(System.Windows.Input.Key key, System.Windows.Input.ModifierKeys modifiers)
@@ -354,35 +349,114 @@ namespace EchoX.ViewModels
             if (key == System.Windows.Input.Key.Escape)
             {
                 ShortcutText = string.Empty;
-                _pendingKey = null;
-                _pendingModifiers = System.Windows.Input.ModifierKeys.None;
+                _pendingGesture = null;
                 _pendingMouseButton = null;
                 return;
             }
 
-            _pendingKey = key;
-            _pendingModifiers = modifiers;
-
-            // Build display string
-            var parts = new System.Collections.Generic.List<string>();
-            if (modifiers.HasFlag(System.Windows.Input.ModifierKeys.Control)) parts.Add("Ctrl");
-            if (modifiers.HasFlag(System.Windows.Input.ModifierKeys.Alt))     parts.Add("Alt");
-            if (modifiers.HasFlag(System.Windows.Input.ModifierKeys.Shift))   parts.Add("Shift");
-            if (modifiers.HasFlag(System.Windows.Input.ModifierKeys.Windows)) parts.Add("Win");
-            parts.Add(KeyToDisplayString(key));
-            ShortcutText = string.Join(" + ", parts);
+            SetShortcutFromGesture(KeyBindsViewModel.BuildGesture(modifiers, key));
         }
 
-        private System.Windows.Input.Key? _pendingKey;
-        private System.Windows.Input.ModifierKeys _pendingModifiers = System.Windows.Input.ModifierKeys.None;
+        public void SetShortcutFromGesture(string? gesture)
+        {
+            if (string.IsNullOrWhiteSpace(gesture))
+            {
+                ShortcutText = string.Empty;
+                _pendingGesture = null;
+                _pendingMouseButton = null;
+                return;
+            }
+
+            _pendingGesture = KeyBindsViewModel.NormalizeGesture(gesture!);
+            _pendingMouseButton = null;
+            ShortcutText = KeyBindsViewModel.FormatGesture(_pendingGesture);
+        }
 
         private static string KeyToDisplayString(System.Windows.Input.Key key)
         {
             // Clean up display names
             var name = key.ToString();
+            if (key == System.Windows.Input.Key.OemMinus) return "-";
+            if (key == System.Windows.Input.Key.OemPlus) return "=";
+            if (key == System.Windows.Input.Key.OemComma) return ",";
+            if (key == System.Windows.Input.Key.OemPeriod) return ".";
+            if (key == System.Windows.Input.Key.Add) return "+";
+            if (key == System.Windows.Input.Key.Subtract) return "-";
+            if (key == System.Windows.Input.Key.Multiply) return "*";
+            if (key == System.Windows.Input.Key.Divide) return "/";
             if (name.StartsWith("D") && name.Length == 2 && char.IsDigit(name[1])) return name[1].ToString();
             if (name.StartsWith("NumPad")) return "Num" + name.Substring(6);
             return name;
+        }
+
+        private static string? GetEffectiveProfileGesture(AudioProfile profile)
+        {
+            if (!string.IsNullOrWhiteSpace(profile.ShortcutGesture))
+                return KeyBindsViewModel.NormalizeGesture(profile.ShortcutGesture!);
+
+            if (string.IsNullOrWhiteSpace(profile.ShortcutKey))
+                return null;
+
+            if (!System.Enum.TryParse<System.Windows.Input.Key>(profile.ShortcutKey, true, out var key))
+                return null;
+
+            return KeyBindsViewModel.BuildGesture(ParseModifiers(profile.ShortcutModifiers), key);
+        }
+
+        private static System.Windows.Input.ModifierKeys ParseModifiers(string? modifierText)
+        {
+            var modifiers = System.Windows.Input.ModifierKeys.None;
+            if (string.IsNullOrWhiteSpace(modifierText))
+                return modifiers;
+
+            foreach (var part in modifierText!.Split(','))
+            {
+                if (System.Enum.TryParse<System.Windows.Input.ModifierKeys>(part.Trim(), true, out var mod))
+                    modifiers |= mod;
+            }
+
+            return modifiers;
+        }
+
+        private static void ApplyLegacyShortcutFields(AudioProfile profile)
+        {
+            profile.ShortcutKey = null;
+            profile.ShortcutModifiers = null;
+
+            var gesture = GetEffectiveProfileGesture(profile);
+            if (string.IsNullOrWhiteSpace(gesture))
+                return;
+
+            var tokens = gesture!.Split(new[] { '+' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(token => token.Trim())
+                .Where(token => token.Length > 0)
+                .ToArray();
+
+            var modifierTokens = new System.Collections.Generic.List<string>();
+            System.Windows.Input.Key? lastKey = null;
+
+            foreach (var token in tokens)
+            {
+                if (System.Enum.TryParse<System.Windows.Input.ModifierKeys>(token, true, out var _))
+                {
+                    modifierTokens.Add(token);
+                    continue;
+                }
+
+                if (!System.Enum.TryParse<System.Windows.Input.Key>(token, true, out var parsedKey))
+                    return;
+
+                if (lastKey.HasValue)
+                    return;
+
+                lastKey = parsedKey;
+            }
+
+            if (!lastKey.HasValue)
+                return;
+
+            profile.ShortcutKey = lastKey.Value.ToString();
+            profile.ShortcutModifiers = modifierTokens.Count > 0 ? string.Join(", ", modifierTokens) : null;
         }
 
         // Helper: resolve a device ID to its display name
@@ -396,6 +470,7 @@ namespace EchoX.ViewModels
 
         private void RegisterAllProfileHotkeys()
         {
+            _gestureProfiles.Clear();
             _mouseButtonProfiles.Clear();
             foreach (var p in Profiles)
                 RegisterProfileHotkey(p);
@@ -408,36 +483,20 @@ namespace EchoX.ViewModels
             {
                 // Mouse button shortcuts are handled by the global mouse hook in MainWindow
                 // Store the mapping so the hook can look it up
-                _mouseButtonProfiles[shortcutMouseButton] = profile;
+                _mouseButtonProfiles[shortcutMouseButton!] = profile;
                 return;
             }
 
-            if (string.IsNullOrWhiteSpace(profile.ShortcutKey)) return;
-            try
-            {
-                if (System.Enum.TryParse<System.Windows.Input.Key>(profile.ShortcutKey, true, out var key))
-                {
-                    var modifiers = System.Windows.Input.ModifierKeys.None;
-                    var shortcutModifiers = profile.ShortcutModifiers;
-                    if (shortcutModifiers != null && shortcutModifiers.Length > 0)
-                        foreach (var part in shortcutModifiers.Split(','))
-                            if (System.Enum.TryParse<System.Windows.Input.ModifierKeys>(part.Trim(), true, out var mod))
-                                modifiers |= mod;
-
-                    NHotkey.Wpf.HotkeyManager.Current.AddOrReplace(
-                        $"Profile_{profile.Id}", key, modifiers,
-                        (s, e) => { ActivateProfile(profile); e.Handled = true; });
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Profile hotkey failed: {ex.Message}");
-            }
+            var gesture = GetEffectiveProfileGesture(profile);
+            if (!string.IsNullOrWhiteSpace(gesture))
+                _gestureProfiles[gesture!] = profile;
         }
 
         // Mouse button → profile mapping (used by MainWindow's global mouse hook)
         public readonly System.Collections.Generic.Dictionary<string, AudioProfile> _mouseButtonProfiles
             = new System.Collections.Generic.Dictionary<string, AudioProfile>();
+        private readonly System.Collections.Generic.Dictionary<string, AudioProfile> _gestureProfiles
+            = new System.Collections.Generic.Dictionary<string, AudioProfile>(StringComparer.OrdinalIgnoreCase);
 
         public void HandleMouseButton(string buttonName)
         {
@@ -445,16 +504,33 @@ namespace EchoX.ViewModels
                 ActivateProfile(profile);
         }
 
+        public bool HandleGesture(string gesture)
+        {
+            if (string.IsNullOrWhiteSpace(gesture))
+                return false;
+
+            var normalized = KeyBindsViewModel.NormalizeGesture(gesture);
+            var profile = Profiles.FirstOrDefault(candidate =>
+                string.Equals(GetEffectiveProfileGesture(candidate), normalized, StringComparison.OrdinalIgnoreCase));
+
+            if (profile != null)
+            {
+                System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() => ActivateProfile(profile)));
+                return true;
+            }
+
+            return false;
+        }
+
         private void UnregisterProfileHotkey(AudioProfile profile)
         {
-            // Unregister keyboard hotkey
-            try { NHotkey.Wpf.HotkeyManager.Current.Remove($"Profile_{profile.Id}"); }
-            catch { }
-
-            // Unregister mouse button mapping
             var shortcutMouseButton = profile.ShortcutMouseButton;
             if (shortcutMouseButton != null && shortcutMouseButton.Length > 0)
-                _mouseButtonProfiles.Remove(shortcutMouseButton);
+                _mouseButtonProfiles.Remove(shortcutMouseButton!);
+
+            var gesture = GetEffectiveProfileGesture(profile);
+            if (!string.IsNullOrWhiteSpace(gesture))
+                _gestureProfiles.Remove(gesture!);
         }
 
         private void SaveProfile()
@@ -479,10 +555,10 @@ namespace EchoX.ViewModels
                 OutputDeviceId     = SelectedOutputDevice.Id,
                 CallInputDeviceId  = SelectedCallInputDevice?.Id,
                 CallOutputDeviceId = SelectedCallOutputDevice?.Id,
-                ShortcutKey        = _pendingKey.HasValue ? _pendingKey.Value.ToString() : null,
-                ShortcutModifiers  = _pendingKey.HasValue ? _pendingModifiers.ToString() : null,
+                ShortcutGesture    = _pendingGesture,
                 ShortcutMouseButton = _pendingMouseButton
             };
+            ApplyLegacyShortcutFields(profile);
             
             AudioProfile? savedProfile = null;
             if (IsEditing && _currentProfileIndex >= 0 && _currentProfileIndex < Profiles.Count)
@@ -496,9 +572,9 @@ namespace EchoX.ViewModels
                 existing.OutputDeviceId     = SelectedOutputDevice.Id;
                 existing.CallInputDeviceId  = SelectedCallInputDevice?.Id;
                 existing.CallOutputDeviceId = SelectedCallOutputDevice?.Id;
-                existing.ShortcutKey        = _pendingKey.HasValue ? _pendingKey.Value.ToString() : null;
-                existing.ShortcutModifiers  = _pendingKey.HasValue ? _pendingModifiers.ToString() : null;
+                existing.ShortcutGesture    = _pendingGesture;
                 existing.ShortcutMouseButton = _pendingMouseButton;
+                ApplyLegacyShortcutFields(existing);
 
                 // Update the storage list entry by ID
                 int storageIndex = profiles.FindIndex(p => p.Id == existing.Id);
@@ -509,6 +585,7 @@ namespace EchoX.ViewModels
                     profiles[storageIndex].OutputDeviceId     = existing.OutputDeviceId;
                     profiles[storageIndex].CallInputDeviceId  = existing.CallInputDeviceId;
                     profiles[storageIndex].CallOutputDeviceId = existing.CallOutputDeviceId;
+                    profiles[storageIndex].ShortcutGesture    = existing.ShortcutGesture;
                     profiles[storageIndex].ShortcutKey        = existing.ShortcutKey;
                     profiles[storageIndex].ShortcutModifiers  = existing.ShortcutModifiers;
                     profiles[storageIndex].ShortcutMouseButton = existing.ShortcutMouseButton;
@@ -550,8 +627,7 @@ namespace EchoX.ViewModels
             SelectedCallInputDevice = null;
             SelectedCallOutputDevice = null;
             ShortcutText = string.Empty;
-            _pendingKey = null;
-            _pendingModifiers = System.Windows.Input.ModifierKeys.None;
+            _pendingGesture = null;
             _pendingMouseButton = null;
             ShortcutWarning = null;
             IsEditing = false;
@@ -571,39 +647,29 @@ namespace EchoX.ViewModels
             IsEditing = true;
             IsEditorVisible = true;
             ProfileName = profile.Name;
-            ShortcutText = profile.ShortcutKey ?? string.Empty;
-            // Restore pending key/modifiers from saved profile
+            _pendingGesture = null;
+            _pendingMouseButton = null;
+            ShortcutText = string.Empty;
+
             if (!string.IsNullOrEmpty(profile.ShortcutMouseButton))
             {
                 _pendingMouseButton = profile.ShortcutMouseButton;
-                _pendingKey = null;
                 ShortcutText = profile.ShortcutMouseButton == "XButton1" ? "Mouse Button 4" : "Mouse Button 5";
+            }
+            else if (!string.IsNullOrWhiteSpace(profile.ShortcutGesture))
+            {
+                _pendingGesture = KeyBindsViewModel.NormalizeGesture(profile.ShortcutGesture!);
+                ShortcutText = KeyBindsViewModel.FormatGesture(_pendingGesture);
             }
             else if (!string.IsNullOrEmpty(profile.ShortcutKey) &&
                 System.Enum.TryParse<System.Windows.Input.Key>(profile.ShortcutKey, true, out var savedKey))
             {
-                _pendingKey = savedKey;
-                _pendingModifiers = System.Windows.Input.ModifierKeys.None;
-                var shortcutModifiers = profile.ShortcutModifiers;
-                if (shortcutModifiers != null && shortcutModifiers.Length > 0)
-                    foreach (var part in shortcutModifiers.Split(','))
-                        if (System.Enum.TryParse<System.Windows.Input.ModifierKeys>(part.Trim(), true, out var mod))
-                            _pendingModifiers |= mod;
-
-                // Build display string directly (avoid SetShortcutFromKey guard checks)
-                var parts = new System.Collections.Generic.List<string>();
-                if (_pendingModifiers.HasFlag(System.Windows.Input.ModifierKeys.Control)) parts.Add("Ctrl");
-                if (_pendingModifiers.HasFlag(System.Windows.Input.ModifierKeys.Alt))     parts.Add("Alt");
-                if (_pendingModifiers.HasFlag(System.Windows.Input.ModifierKeys.Shift))   parts.Add("Shift");
-                if (_pendingModifiers.HasFlag(System.Windows.Input.ModifierKeys.Windows)) parts.Add("Win");
-                parts.Add(KeyToDisplayString(savedKey));
-                ShortcutText = string.Join(" + ", parts);
+                _pendingGesture = KeyBindsViewModel.BuildGesture(ParseModifiers(profile.ShortcutModifiers), savedKey);
+                ShortcutText = KeyBindsViewModel.FormatGesture(_pendingGesture);
             }
             else
             {
                 ShortcutText = string.Empty;
-                _pendingKey = null;
-                _pendingModifiers = System.Windows.Input.ModifierKeys.None;
                 _pendingMouseButton = null;
             }
             _currentProfileIndex = Profiles.IndexOf(profile);
@@ -623,19 +689,19 @@ namespace EchoX.ViewModels
 
         /// <summary>Saves only the shortcut fields for a profile (called from Key Binds inline capture).</summary>
         public void SaveProfileShortcut(AudioProfile profile,
-            System.Windows.Input.Key? key,
-            System.Windows.Input.ModifierKeys mods,
+            string? gesture,
             string? mouseButton)
         {
-            profile.ShortcutKey         = key.HasValue ? key.Value.ToString() : null;
-            profile.ShortcutModifiers   = key.HasValue ? mods.ToString() : null;
+            profile.ShortcutGesture     = string.IsNullOrWhiteSpace(gesture) ? null : KeyBindsViewModel.NormalizeGesture(gesture!);
             profile.ShortcutMouseButton = mouseButton;
+            ApplyLegacyShortcutFields(profile);
             profile.IsCapturingShortcut = false;
 
             var profiles = _storageService.LoadProfiles();
             var idx = profiles.FindIndex(p => p.Id == profile.Id);
             if (idx >= 0)
             {
+                profiles[idx].ShortcutGesture     = profile.ShortcutGesture;
                 profiles[idx].ShortcutKey         = profile.ShortcutKey;
                 profiles[idx].ShortcutModifiers   = profile.ShortcutModifiers;
                 profiles[idx].ShortcutMouseButton = profile.ShortcutMouseButton;
@@ -652,6 +718,7 @@ namespace EchoX.ViewModels
             UnregisterProfileHotkey(profile);
             profile.ShortcutKey         = null;
             profile.ShortcutModifiers   = null;
+            profile.ShortcutGesture     = null;
             profile.ShortcutMouseButton = null;
             profile.IsCapturingShortcut = false;
 
@@ -659,6 +726,7 @@ namespace EchoX.ViewModels
             var idx = profiles.FindIndex(p => p.Id == profile.Id);
             if (idx >= 0)
             {
+                profiles[idx].ShortcutGesture     = null;
                 profiles[idx].ShortcutKey         = null;
                 profiles[idx].ShortcutModifiers   = null;
                 profiles[idx].ShortcutMouseButton = null;

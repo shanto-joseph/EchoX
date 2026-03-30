@@ -37,6 +37,8 @@ namespace EchoX.ViewModels
             SettingsViewModel  = new SettingsViewModel(_storageService);
             AboutViewModel     = new AboutViewModel(_storageService);
             KeyBindsViewModel  = new KeyBindsViewModel(_storageService);
+
+            _ = AboutViewModel.CheckForUpdatesAsync(true);
         }
 
         public void NotifyTray(string title, string message)

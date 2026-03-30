@@ -1,9 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Media;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
+using EchoX.Models;
 using AudioSwitcher.AudioApi.CoreAudio;
+using AudioSwitcher.AudioApi.Session;
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
 
@@ -44,6 +48,70 @@ namespace EchoX.Services
         public CoreAudioDevice? GetDefaultCommunicationsMicrophone() => _controller.Value.DefaultCaptureCommunicationsDevice;
 
         public CoreAudioDevice? GetDeviceByGuid(Guid guid) => _controller.Value.GetDevice(guid);
+
+        public List<AppAudioSessionInfo> GetOutputSessions(string deviceId)
+        {
+            if (!Guid.TryParse(deviceId, out var guid))
+                return new List<AppAudioSessionInfo>();
+
+            var device = _controller.Value.GetDevice(guid);
+            if (device == null)
+                return new List<AppAudioSessionInfo>();
+
+            try
+            {
+                return device.SessionController.ActiveSessions()
+                    .Select(session => new AppAudioSessionInfo
+                    {
+                        SessionId = session.Id ?? string.Empty,
+                        DeviceId = deviceId,
+                        DisplayName = ResolveSessionDisplayName(session),
+                        ExecutablePath = session.ExecutablePath ?? string.Empty,
+                        IconPath = session.IconPath ?? string.Empty,
+                        ProcessId = session.ProcessId,
+                        Volume = session.Volume,
+                        IsMuted = session.IsMuted,
+                        IsSystemSession = session.IsSystemSession
+                    })
+                    .Where(session => !string.IsNullOrWhiteSpace(session.SessionId))
+                    .OrderBy(session => session.DisplayName)
+                    .ToList();
+            }
+            catch
+            {
+                return new List<AppAudioSessionInfo>();
+            }
+        }
+
+        public void SetOutputSessionVolume(string deviceId, string sessionId, double volume)
+        {
+            var session = GetSession(deviceId, sessionId);
+            if (session == null)
+                return;
+
+            try
+            {
+                session.Volume = volume;
+            }
+            catch
+            {
+            }
+        }
+
+        public void SetOutputSessionMute(string deviceId, string sessionId, bool isMuted)
+        {
+            var session = GetSession(deviceId, sessionId);
+            if (session == null)
+                return;
+
+            try
+            {
+                session.IsMuted = isMuted;
+            }
+            catch
+            {
+            }
+        }
 
         public void SwitchDevice(string deviceId)
         {
@@ -128,6 +196,129 @@ namespace EchoX.Services
         }
 
         private class NoopDisposable : IDisposable { public void Dispose() { } }
+
+        private IAudioSession? GetSession(string deviceId, string sessionId)
+        {
+            if (!Guid.TryParse(deviceId, out var guid))
+                return null;
+
+            var device = _controller.Value.GetDevice(guid);
+            if (device == null)
+                return null;
+
+            try
+            {
+                return device.SessionController.All()
+                    .FirstOrDefault(session => string.Equals(session.Id, sessionId, StringComparison.OrdinalIgnoreCase));
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static string ResolveSessionDisplayName(IAudioSession session)
+        {
+            if (!string.IsNullOrWhiteSpace(session.DisplayName))
+                return session.DisplayName;
+
+            if (session.IsSystemSession)
+                return "System Sounds";
+
+            string? executableName = null;
+            string? bestWindowTitle = null;
+            try
+            {
+                if (session.ProcessId > 0)
+                {
+                    var process = Process.GetProcessById(session.ProcessId);
+                    bestWindowTitle = NormalizeWindowTitle(process.MainWindowTitle);
+
+                    if (string.IsNullOrWhiteSpace(bestWindowTitle))
+                    {
+                        bestWindowTitle = Process.GetProcessesByName(process.ProcessName)
+                            .Select(p =>
+                            {
+                                try { return NormalizeWindowTitle(p.MainWindowTitle); }
+                                catch { return string.Empty; }
+                            })
+                            .FirstOrDefault(title => !string.IsNullOrWhiteSpace(title));
+                    }
+                }
+            }
+            catch
+            {
+            }
+
+            if (!string.IsNullOrWhiteSpace(bestWindowTitle))
+                return bestWindowTitle!;
+
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(session.ExecutablePath))
+                {
+                    executableName = System.IO.Path.GetFileNameWithoutExtension(session.ExecutablePath);
+                    var versionInfo = FileVersionInfo.GetVersionInfo(session.ExecutablePath);
+                    if (!string.IsNullOrWhiteSpace(versionInfo.FileDescription))
+                        return HumanizeAppName(versionInfo.FileDescription);
+
+                    if (!string.IsNullOrWhiteSpace(versionInfo.ProductName))
+                        return HumanizeAppName(versionInfo.ProductName);
+                }
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                if (session.ProcessId > 0)
+                {
+                    var process = Process.GetProcessById(session.ProcessId);
+                    var processName = HumanizeAppName(process.ProcessName ?? string.Empty);
+                    return processName;
+                }
+            }
+            catch
+            {
+            }
+
+            if (!string.IsNullOrWhiteSpace(executableName))
+                return HumanizeAppName(executableName!);
+
+            return "Unknown App";
+        }
+
+        private static string HumanizeAppName(string rawName)
+        {
+            if (string.IsNullOrWhiteSpace(rawName))
+                return "Unknown App";
+
+            var withSpaces = Regex.Replace(rawName, "([a-z0-9])([A-Z])", "$1 $2");
+            withSpaces = Regex.Replace(withSpaces, "([A-Z])([A-Z][a-z])", "$1 $2");
+            withSpaces = withSpaces.Replace("_", " ").Replace("-", " ").Trim();
+            return string.IsNullOrWhiteSpace(withSpaces) ? rawName : withSpaces;
+        }
+
+        private static string NormalizeWindowTitle(string rawTitle)
+        {
+            if (string.IsNullOrWhiteSpace(rawTitle))
+                return string.Empty;
+
+            var title = rawTitle.Trim();
+            if (title.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                title = System.IO.Path.GetFileNameWithoutExtension(title);
+
+            var separators = new[] { " - ", " | ", " — " };
+            foreach (var separator in separators)
+            {
+                var pieces = title.Split(new[] { separator }, StringSplitOptions.RemoveEmptyEntries);
+                if (pieces.Length > 1 && pieces[0].Length >= 3)
+                    return pieces[0].Trim();
+            }
+
+            return title;
+        }
 
         public bool ToggleMuteDefaultMic()
         {

@@ -974,32 +974,64 @@
                                                        FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                         </StackPanel>
                                         
-                                        <Button HorizontalAlignment="Right" VerticalAlignment="Center"
-                                                Command="{Binding DevicesViewModel.TestOutputCommand}"
-                                                CommandParameter="{Binding DevicesViewModel.CurrentOutputDevice}"
-                                                ToolTip="Test Selected Speaker"
-                                                Width="28" Height="28" Cursor="Hand"
-                                                BorderThickness="0" Background="Transparent">
-                                            <Button.Template>
-                                                <ControlTemplate TargetType="Button">
-                                                    <Border x:Name="Bg" Background="Transparent" CornerRadius="14">
-                                                        <Path x:Name="Icon" Data="M8,5.14V19.14L19,12.14L8,5.14Z" 
-                                                              Fill="{StaticResource TextMid}" 
-                                                              Width="12" Height="12" Stretch="Uniform"
-                                                              HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                    </Border>
-                                                    <ControlTemplate.Triggers>
-                                                        <Trigger Property="IsMouseOver" Value="True">
-                                                            <Setter TargetName="Icon" Property="Fill" Value="{StaticResource Accent}"/>
-                                                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource BgCard}"/>
-                                                        </Trigger>
-                                                        <Trigger Property="IsPressed" Value="True">
-                                                            <Setter TargetName="Icon" Property="Fill" Value="{StaticResource AccentDim}"/>
-                                                        </Trigger>
-                                                    </ControlTemplate.Triggers>
-                                                </ControlTemplate>
-                                            </Button.Template>
-                                        </Button>
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                            <Button x:Name="OutputMixerBtn"
+                                                    Click="OutputMixerBtn_Click"
+                                                    ToolTip="Per-app volume mixer"
+                                                    Cursor="Hand"
+                                                    Margin="0,0,8,0"
+                                                    Padding="10,0"
+                                                    Height="28"
+                                                    MinWidth="58"
+                                                    BorderThickness="0"
+                                                    Background="Transparent"
+                                                    Foreground="{StaticResource TextMid}"
+                                                    Content="Mixer">
+                                                <Button.Template>
+                                                    <ControlTemplate TargetType="Button">
+                                                        <Border x:Name="Bg" Background="Transparent" CornerRadius="10" Padding="{TemplateBinding Padding}">
+                                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        </Border>
+                                                        <ControlTemplate.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter TargetName="Bg" Property="Background" Value="{StaticResource BgCard}"/>
+                                                                <Setter Property="Foreground" Value="{StaticResource Accent}"/>
+                                                            </Trigger>
+                                                            <Trigger Property="IsPressed" Value="True">
+                                                                <Setter Property="Foreground" Value="{StaticResource AccentDim}"/>
+                                                            </Trigger>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </Button.Template>
+                                            </Button>
+
+                                            <Button HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                    Command="{Binding DevicesViewModel.TestOutputCommand}"
+                                                    CommandParameter="{Binding DevicesViewModel.CurrentOutputDevice}"
+                                                    ToolTip="Test Selected Speaker"
+                                                    Width="28" Height="28" Cursor="Hand"
+                                                    BorderThickness="0" Background="Transparent">
+                                                <Button.Template>
+                                                    <ControlTemplate TargetType="Button">
+                                                        <Border x:Name="Bg" Background="Transparent" CornerRadius="14">
+                                                            <Path x:Name="Icon" Data="M8,5.14V19.14L19,12.14L8,5.14Z" 
+                                                                  Fill="{StaticResource TextMid}" 
+                                                                  Width="12" Height="12" Stretch="Uniform"
+                                                                  HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        </Border>
+                                                        <ControlTemplate.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter TargetName="Icon" Property="Fill" Value="{StaticResource Accent}"/>
+                                                                <Setter TargetName="Bg" Property="Background" Value="{StaticResource BgCard}"/>
+                                                            </Trigger>
+                                                            <Trigger Property="IsPressed" Value="True">
+                                                                <Setter TargetName="Icon" Property="Fill" Value="{StaticResource AccentDim}"/>
+                                                            </Trigger>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </Button.Template>
+                                            </Button>
+                                        </StackPanel>
                                     </Grid>
                                 </Border>
                                 <ListBox DockPanel.Dock="Top" Margin="6,6,6,6"
@@ -1676,13 +1708,15 @@
                                                 <!-- Key Binds-style row: badge + clear -->
                                                 <Grid>
                                                     <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
                                                         <ColumnDefinition Width="*"/>
                                                         <ColumnDefinition Width="6"/>
                                                         <ColumnDefinition Width="Auto"/>
                                                     </Grid.ColumnDefinitions>
 
                                                     <!-- Clickable key badge -->
-                                                    <Button Grid.Column="0" x:Name="RecordShortcutBtn" Height="36"
+                                                    <Button Grid.Column="0" x:Name="RecordShortcutBtn" Height="32" MinWidth="180"
+                                                            HorizontalAlignment="Left"
                                                             Cursor="Hand" Click="RecordShortcut_Click">
                                                         <Button.Style>
                                                             <Style TargetType="Button">
@@ -1696,12 +1730,13 @@
                                                                                     Background="{TemplateBinding Background}"
                                                                                     BorderBrush="{TemplateBinding BorderBrush}"
                                                                                     BorderThickness="{TemplateBinding BorderThickness}"
-                                                                                    CornerRadius="8">
+                                                                                    CornerRadius="7"
+                                                                                    Padding="12,6">
                                                                                 <Grid>
                                                                                     <!-- Idle: shortcut text or placeholder -->
                                                                                     <StackPanel x:Name="IdlePanel" Orientation="Horizontal"
                                                                                                 HorizontalAlignment="Center" VerticalAlignment="Center">
-                                                                                        <TextBlock FontFamily="Consolas" FontSize="13" FontWeight="SemiBold">
+                                                                                        <TextBlock FontFamily="Consolas" FontSize="12">
                                                                                             <TextBlock.Style>
                                                                                                 <Style TargetType="TextBlock">
                                                                                                     <Setter Property="Text" Value="{Binding ProfilesViewModel.ShortcutText}"/>
@@ -1735,7 +1770,7 @@
                                                                                                 </EventTrigger>
                                                                                             </Ellipse.Triggers>
                                                                                         </Ellipse>
-                                                                                        <TextBlock Text="Press keys…" Foreground="#F87171" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                                                        <TextBlock Text="Press keys…" Foreground="#F87171" FontFamily="Consolas" FontSize="12" VerticalAlignment="Center"/>
                                                                                     </StackPanel>
                                                                                 </Grid>
                                                                             </Border>
@@ -1752,7 +1787,7 @@
                                                     </Button>
 
                                                     <!-- Clear button -->
-                                                    <Button Grid.Column="2" Width="36" Height="36" Padding="0"
+                                                    <Button Grid.Column="3" Width="28" Height="28" Padding="0"
                                                             Background="Transparent" BorderThickness="0"
                                                             Cursor="Hand" Click="ClearShortcut_Click" ToolTip="Clear shortcut">
                                                         <Button.Style>
@@ -1762,17 +1797,15 @@
                                                                     <Setter.Value>
                                                                         <ControlTemplate TargetType="Button">
                                                                             <Border x:Name="Bg" Background="Transparent"
-                                                                                    BorderBrush="{StaticResource Border}" BorderThickness="1"
-                                                                                    CornerRadius="8">
+                                                                                    CornerRadius="6">
                                                                                 <TextBlock x:Name="Ico" Text="&#xE711;"
                                                                                            FontFamily="Segoe MDL2 Assets"
-                                                                                           Foreground="{StaticResource TextLow}" FontSize="12"
+                                                                                           Foreground="{StaticResource TextLow}" FontSize="11"
                                                                                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                                                             </Border>
                                                                             <ControlTemplate.Triggers>
                                                                                 <Trigger Property="IsMouseOver" Value="True">
                                                                                     <Setter TargetName="Ico" Property="Foreground" Value="#EF4444"/>
-                                                                                    <Setter TargetName="Bg" Property="BorderBrush" Value="#EF4444"/>
                                                                                 </Trigger>
                                                                             </ControlTemplate.Triggers>
                                                                         </ControlTemplate>
@@ -2013,7 +2046,7 @@
                             </Border>
 
                             <!-- Toggle Mic Mute row -->
-                            <Border Padding="18,14">
+                            <Border Padding="18,14" BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto"/>
@@ -2074,6 +2107,92 @@
                                     <Button Grid.Column="6" Width="28" Height="28" Padding="0"
                                             Background="Transparent" BorderThickness="0" Cursor="Hand"
                                             Command="{Binding KeyBindsViewModel.ResetMuteCommand}" ToolTip="Reset to default">
+                                        <Button.Style>
+                                            <Style TargetType="Button">
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="Button">
+                                                            <Border Background="Transparent" CornerRadius="6">
+                                                                <TextBlock x:Name="Ico" Text="&#xE72C;" FontFamily="Segoe MDL2 Assets"
+                                                                           Foreground="{StaticResource TextLow}" FontSize="12"
+                                                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                            </Border>
+                                                            <ControlTemplate.Triggers>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter TargetName="Ico" Property="Foreground" Value="{StaticResource Accent}"/>
+                                                                </Trigger>
+                                                            </ControlTemplate.Triggers>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+                                </Grid>
+                            </Border>
+
+                            <!-- Open Mixer row -->
+                            <Border Padding="18,14">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="0"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="6"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border Grid.Column="0" Width="36" Height="36" Margin="0,0,14,0">
+                                        <TextBlock Text="&#xE15D;" FontFamily="Segoe MDL2 Assets"
+                                                   Foreground="{StaticResource TextMid}" FontSize="16"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <TextBlock Text="Open Volume Mixer" Foreground="{StaticResource TextHi}" FontSize="13" FontWeight="SemiBold"/>
+                                        <TextBlock Text="Show the per-app output mixer without opening EchoX" Foreground="{StaticResource TextMid}" FontSize="12"/>
+                                    </StackPanel>
+                                    <CheckBox Grid.Column="2" VerticalAlignment="Center" Margin="0,0,10,0"
+                                              IsChecked="{Binding KeyBindsViewModel.IsMixerEnabled}"
+                                              Style="{StaticResource ToggleSwitch}"/>
+                                    <Button Grid.Column="4" x:Name="MixerCaptureBtn" Cursor="Hand" VerticalAlignment="Center"
+                                            Click="MixerCaptureBtn_Click">
+                                        <Button.Style>
+                                            <Style TargetType="Button">
+                                                <Setter Property="Background" Value="{StaticResource BgRaised}"/>
+                                                <Setter Property="BorderBrush" Value="{StaticResource Border}"/>
+                                                <Setter Property="BorderThickness" Value="1"/>
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="Button">
+                                                            <Border x:Name="Bg" Background="{TemplateBinding Background}"
+                                                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                                                    CornerRadius="7" Padding="12,6">
+                                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                            </Border>
+                                                            <ControlTemplate.Triggers>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter TargetName="Bg" Property="BorderBrush" Value="{StaticResource Accent}"/>
+                                                                </Trigger>
+                                                            </ControlTemplate.Triggers>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding KeyBindsViewModel.IsCapturingMixer}" Value="True">
+                                                        <Setter Property="Background" Value="{StaticResource AccentLow}"/>
+                                                        <Setter Property="BorderBrush" Value="{StaticResource Accent}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                        <TextBlock Text="{Binding KeyBindsViewModel.MixerDisplay}"
+                                                   Foreground="{StaticResource TextHi}" FontFamily="Consolas" FontSize="12"/>
+                                    </Button>
+                                    <Button Grid.Column="6" Width="28" Height="28" Padding="0"
+                                            Background="Transparent" BorderThickness="0" Cursor="Hand"
+                                            Command="{Binding KeyBindsViewModel.ResetMixerCommand}" ToolTip="Reset to default">
                                         <Button.Style>
                                             <Style TargetType="Button">
                                                 <Setter Property="Template">
@@ -2299,9 +2418,12 @@
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
                                     <Border Grid.Column="0" Width="34" Height="34" Margin="0,0,14,0">
-                                        <TextBlock Text="&#xE74F;" FontFamily="Segoe MDL2 Assets"
-                                                   Foreground="{StaticResource TextMid}" FontSize="15"
-                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        <Viewbox Width="16" Height="16" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <Canvas Width="16" Height="16">
+                                                <Path Fill="#EF4444" Stretch="Uniform"
+                                                      Data="M10.949933333333334 11.892666666666665c-0.688 0.3892 -1.4605333333333332 0.6464666666666666 -2.2831333333333332 0.7374V15.333333333333332h-1.3333333333333333v-2.7032666666666665C4.55236 12.322599999999998 2.3441533333333333 10.1144 2.0367266666666666 7.333333333333333h1.3439733333333335c0.32348 2.2615333333333334 2.26842 4 4.619433333333333 4 0.7000666666666666 0 1.3641333333333332 -0.15413333333333332 1.9601333333333333 -0.43039999999999995l-1.0334666666666665 -1.0334666666666665c-0.2942 0.08499999999999999 -0.6051333333333333 0.13053333333333333 -0.9266666666666665 0.13053333333333333 -1.84098 0 -3.33336 -1.4924 -3.33336 -3.333333333333333V5.609473333333334l-3.7377399999999996 -3.7377333333333334L1.8718466666666667 0.9289333333333333l13.199353333333331 13.199333333333332 -0.9428666666666665 0.9427999999999999 -3.1784 -3.1784Zm1.9665333333333335 -1.7857333333333332 -0.9615999999999999 -0.9616666666666666c0.3389333333333333 -0.5396666666666666 0.5704666666666667 -1.1536666666666666 0.6646666666666666 -1.8119333333333334h1.3439333333333332c-0.1132 1.0244 -0.48433333333333334 1.971 -1.047 2.7736Zm-1.9392666666666667 -1.9393333333333331L5.123833333333333 2.31426C5.702846666666667 1.3284533333333333 6.7742 0.6666666666666666 8.000133333333332 0.6666666666666666c1.8409333333333333 0 3.333333333333333 1.4923866666666665 3.333333333333333 3.333333333333333v2.6666666666666665c0 0.5399333333333333 -0.1284 1.0498666666666665 -0.3562666666666666 1.5009333333333332Z"/>
+                                            </Canvas>
+                                        </Viewbox>
                                     </Border>
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                         <TextBlock Text="Show Mute Indicator" Foreground="{StaticResource TextHi}"
@@ -2596,15 +2718,20 @@
                                     <TextBlock Text="Check for Updates" Foreground="{StaticResource TextHi}"
                                                FontSize="13" FontWeight="SemiBold"/>
                                     <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
-                                        <TextBlock Text="Last checked: " Foreground="{StaticResource TextMid}" FontSize="12"/>
+                                        <TextBlock Text="{Binding AboutViewModel.UpdateStatusText}"
+                                                   Foreground="{StaticResource TextHi}" FontSize="12" FontWeight="SemiBold"/>
+                                        <TextBlock Text="  •  " Foreground="{StaticResource TextLow}" FontSize="12"/>
                                         <TextBlock Text="{Binding AboutViewModel.LastChecked}"
                                                    Foreground="{StaticResource TextMid}" FontSize="12"/>
                                     </StackPanel>
+                                    <TextBlock Text="{Binding AboutViewModel.UpdateStatusDetail}"
+                                               Foreground="{StaticResource TextMid}" FontSize="12" Margin="0,2,0,0"
+                                               TextWrapping="Wrap"/>
                                 </StackPanel>
                                 <Button Grid.Column="2" Style="{StaticResource BtnPrimary}"
                                         Height="30" Padding="14,0" VerticalAlignment="Center"
                                         Command="{Binding AboutViewModel.CheckForUpdateCommand}"
-                                        Content="Check now"/>
+                                        Content="{Binding AboutViewModel.UpdateActionText}"/>
                             </Grid>
                         </Border>
                     </Border>
@@ -2619,6 +2746,68 @@
             <!-- Window controls — float top-right over everything -->
             <StackPanel HorizontalAlignment="Right" VerticalAlignment="Top"
                         Orientation="Horizontal" Margin="0,8,10,0" Panel.ZIndex="99">
+                <Button Command="{Binding AboutViewModel.CheckForUpdateCommand}"
+                        Height="30" MinWidth="132" Margin="0,0,10,0"
+                        Background="Transparent" BorderThickness="0" Cursor="Hand"
+                        ToolTip="{Binding AboutViewModel.UpdateStatusDetail}">
+                    <Button.Style>
+                        <Style TargetType="Button">
+                            <Setter Property="Foreground" Value="{StaticResource TextMid}"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="R"
+                                                Background="{StaticResource BgCard}"
+                                                BorderBrush="{StaticResource Border}"
+                                                BorderThickness="1"
+                                                CornerRadius="8"
+                                                Padding="10,0">
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                <Ellipse Width="7" Height="7" Margin="0,0,8,0" VerticalAlignment="Center">
+                                                    <Ellipse.Style>
+                                                        <Style TargetType="Ellipse">
+                                                            <Setter Property="Fill" Value="{StaticResource TextMid}"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding AboutViewModel.IsCheckingForUpdates}" Value="True">
+                                                                    <Setter Property="Fill" Value="{StaticResource Blue}"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding AboutViewModel.IsUpdateAvailable}" Value="True">
+                                                                    <Setter Property="Fill" Value="{StaticResource Amber}"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Ellipse.Style>
+                                                </Ellipse>
+                                                <TextBlock Text="{Binding AboutViewModel.UpdateStatusText}"
+                                                           Foreground="{TemplateBinding Foreground}"
+                                                           FontSize="11.5"
+                                                           FontWeight="SemiBold"
+                                                           VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="R" Property="BorderBrush" Value="{StaticResource Accent}"/>
+                                                <Setter TargetName="R" Property="Background" Value="{StaticResource BgRaised}"/>
+                                            </Trigger>
+                                            <Trigger Property="IsEnabled" Value="False">
+                                                <Setter TargetName="R" Property="Opacity" Value="0.82"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding AboutViewModel.IsCheckingForUpdates}" Value="True">
+                                    <Setter Property="Foreground" Value="{StaticResource Blue}"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding AboutViewModel.IsUpdateAvailable}" Value="True">
+                                    <Setter Property="Foreground" Value="{StaticResource Amber}"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
                 <Button Click="MinimizeBtn_Click" Width="38" Height="32"
                         Background="Transparent" BorderThickness="0" Cursor="Hand">
                     <Button.Template>
