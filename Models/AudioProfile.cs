@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.CompilerServices;
 
 namespace EchoX.Models
@@ -15,6 +16,7 @@ namespace EchoX.Models
         private int _volumeLevel = 100;
         private bool _isActive;
         private string? _shortcutKey;
+        private string? _shortcutGesture;
 
         public string Id 
         { 
@@ -71,6 +73,13 @@ namespace EchoX.Models
             set { if (_shortcutKey != value) { _shortcutKey = value; OnPropertyChanged(); OnPropertyChanged(nameof(ShortcutDisplay)); } }
         }
 
+        /// <summary>Full shortcut gesture, e.g. "Control+Alt+K" or "D0+D9".</summary>
+        public string? ShortcutGesture
+        {
+            get => _shortcutGesture;
+            set { if (_shortcutGesture != value) { _shortcutGesture = value; OnPropertyChanged(); OnPropertyChanged(nameof(ShortcutDisplay)); } }
+        }
+
         private string? _shortcutModifiers;
         /// <summary>Modifier flags as string, e.g. "Control,Alt"</summary>
         public string? ShortcutModifiers
@@ -105,6 +114,10 @@ namespace EchoX.Models
                     };
                 }
 
+                var shortcutGesture = _shortcutGesture;
+                if (!string.IsNullOrWhiteSpace(shortcutGesture))
+                    return FormatGestureForDisplay(shortcutGesture!);
+
                 var shortcutKey = _shortcutKey;
                 if (string.IsNullOrEmpty(shortcutKey))
                     return "No shortcut";
@@ -134,6 +147,41 @@ namespace EchoX.Models
             set { if (_isCapturingShortcut != value) { _isCapturingShortcut = value; OnPropertyChanged(); OnPropertyChanged(nameof(ShortcutDisplay)); } }
         }
         private bool _isCapturingShortcut;
+
+        private static string FormatGestureForDisplay(string gesture)
+        {
+            if (string.IsNullOrWhiteSpace(gesture))
+                return "No shortcut";
+
+            var parts = gesture
+                .Split(new[] { '+' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(part => part.Trim())
+                .Where(part => part.Length > 0)
+                .Select(FormatGesturePart)
+                .ToArray();
+
+            return parts.Length == 0 ? "No shortcut" : string.Join(" + ", parts);
+        }
+
+        private static string FormatGesturePart(string token)
+        {
+            return token switch
+            {
+                "Control" => "Ctrl",
+                "Windows" => "Win",
+                "OemMinus" => "-",
+                "OemPlus" => "=",
+                "OemComma" => ",",
+                "OemPeriod" => ".",
+                "Add" => "+",
+                "Subtract" => "-",
+                "Multiply" => "*",
+                "Divide" => "/",
+                _ when token.StartsWith("D") && token.Length == 2 && char.IsDigit(token[1]) => token[1].ToString(),
+                _ when token.StartsWith("NumPad", StringComparison.Ordinal) => "Num" + token.Substring(6),
+                _ => token
+            };
+        }
 
         public event PropertyChangedEventHandler? PropertyChanged;
         protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
