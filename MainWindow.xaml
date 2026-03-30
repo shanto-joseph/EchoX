@@ -596,14 +596,6 @@
                             <TextBlock Text="Settings" FontSize="13" Foreground="{StaticResource TextMid}"/>
                         </StackPanel>
                     </Button>
-                    <Button x:Name="BtnNav4" Tag="About" Click="SidebarButton_Click"
-                            Style="{StaticResource NavBtn}">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="&#xE946;" FontFamily="Segoe MDL2 Assets" FontSize="13" Margin="0,0,10,0"
-                                       Foreground="{StaticResource TextMid}"/>
-                            <TextBlock Text="About" FontSize="13" Foreground="{StaticResource TextMid}"/>
-                        </StackPanel>
-                    </Button>
                 </StackPanel>
 
             </DockPanel>
@@ -1327,7 +1319,8 @@
                                 </ListBox.ItemContainerStyle>
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
-                                        <Grid Margin="6,8" MinHeight="28">
+                                        <Border BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1" Padding="6,8">
+                                        <Grid MinHeight="28">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="Auto"/>
                                                 <ColumnDefinition Width="*"/>
@@ -1358,13 +1351,16 @@
                                             <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                                                 <Button Width="28" Height="28" Padding="0"
                                                         Background="Transparent" BorderThickness="0" Cursor="Hand"
-                                                        Command="{Binding DataContext.ProfilesViewModel.DeleteCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                                                        CommandParameter="{Binding}" ToolTip="Delete">
+                                                        Tag="{Binding}" Click="ProfileOptionsBtn_Click" ToolTip="More">
                                                     <Button.Style>
                                                         <Style TargetType="Button">
                                                             <Setter Property="Opacity" Value="0"/>
                                                             <Setter Property="IsHitTestVisible" Value="False"/>
                                                             <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=ListBoxItem}, Path=IsMouseOver}" Value="True">
+                                                                    <Setter Property="Opacity" Value="1"/>
+                                                                    <Setter Property="IsHitTestVisible" Value="True"/>
+                                                                </DataTrigger>
                                                                 <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=ListBoxItem}, Path=IsSelected}" Value="True">
                                                                     <Setter Property="Opacity" Value="1"/>
                                                                     <Setter Property="IsHitTestVisible" Value="True"/>
@@ -1374,17 +1370,87 @@
                                                     </Button.Style>
                                                     <Button.Template>
                                                         <ControlTemplate TargetType="Button">
-                                                            <Border Background="Transparent">
-                                                                <Viewbox Width="13" Height="13" Stretch="Uniform">
-                                                                    <Path Data="M5.755,20.283,4,8H20L18.245,20.283A2,2,0,0,1,16.265,22H7.735A2,2,0,0,1,5.755,20.283ZM21,4H16V3a1,1,0,0,0-1-1H9A1,1,0,0,0,8,3V4H3A1,1,0,0,0,3,6H21a1,1,0,0,0,0-2Z"
-                                                                          Fill="{StaticResource Red}" Width="24" Height="24" Stretch="Uniform"/>
-                                                                </Viewbox>
+                                                            <Border x:Name="Bg" Background="Transparent" CornerRadius="8">
+                                                                <TextBlock Text="&#xE712;"
+                                                                           FontFamily="Segoe MDL2 Assets"
+                                                                           FontSize="13"
+                                                                           Foreground="{StaticResource TextMid}"
+                                                                           HorizontalAlignment="Center"
+                                                                           VerticalAlignment="Center"/>
                                                             </Border>
+                                                            <ControlTemplate.Triggers>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter TargetName="Bg" Property="Background" Value="{StaticResource BgRaised}"/>
+                                                                </Trigger>
+                                                            </ControlTemplate.Triggers>
                                                         </ControlTemplate>
                                                     </Button.Template>
+                                                    <Button.ContextMenu>
+                                                        <ContextMenu Placement="Bottom"
+                                                                     StaysOpen="False"
+                                                                     Background="#111416"
+                                                                     BorderBrush="{StaticResource Border}"
+                                                                     BorderThickness="1"
+                                                                     Padding="4"
+                                                                     HasDropShadow="False">
+                                                            <ContextMenu.Resources>
+                                                                <Style TargetType="ContextMenu">
+                                                                    <Setter Property="Template">
+                                                                        <Setter.Value>
+                                                                            <ControlTemplate TargetType="ContextMenu">
+                                                                                <Border Background="{TemplateBinding Background}"
+                                                                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                                                                        BorderThickness="{TemplateBinding BorderThickness}"
+                                                                                        CornerRadius="8"
+                                                                                        Padding="{TemplateBinding Padding}">
+                                                                                    <StackPanel IsItemsHost="True"
+                                                                                                KeyboardNavigation.DirectionalNavigation="Cycle"/>
+                                                                                </Border>
+                                                                            </ControlTemplate>
+                                                                        </Setter.Value>
+                                                                    </Setter>
+                                                                </Style>
+                                                                <Style TargetType="MenuItem">
+                                                                    <Setter Property="Foreground" Value="{StaticResource TextHi}"/>
+                                                                    <Setter Property="Background" Value="Transparent"/>
+                                                                    <Setter Property="Padding" Value="12,6"/>
+                                                                    <Setter Property="FontSize" Value="12"/>
+                                                                    <Setter Property="MinWidth" Value="108"/>
+                                                                    <Setter Property="Template">
+                                                                        <Setter.Value>
+                                                                            <ControlTemplate TargetType="MenuItem">
+                                                                                <Border x:Name="Bg"
+                                                                                        Background="{TemplateBinding Background}"
+                                                                                        CornerRadius="6"
+                                                                                        Padding="{TemplateBinding Padding}">
+                                                                                    <TextBlock Text="{TemplateBinding Header}"
+                                                                                               Foreground="{TemplateBinding Foreground}"
+                                                                                               FontSize="{TemplateBinding FontSize}"
+                                                                                               VerticalAlignment="Center"/>
+                                                                                </Border>
+                                                                                <ControlTemplate.Triggers>
+                                                                                    <Trigger Property="IsHighlighted" Value="True">
+                                                                                        <Setter TargetName="Bg" Property="Background" Value="{StaticResource BgRaised}"/>
+                                                                                    </Trigger>
+                                                                                </ControlTemplate.Triggers>
+                                                                            </ControlTemplate>
+                                                                        </Setter.Value>
+                                                                    </Setter>
+                                                                </Style>
+                                                            </ContextMenu.Resources>
+                                                            <MenuItem Header="Edit"
+                                                                      Tag="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                                      Click="ProfileMenuEdit_Click"/>
+                                                            <MenuItem Header="Delete"
+                                                                      Foreground="{StaticResource Red}"
+                                                                      Tag="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                                      Click="ProfileMenuDelete_Click"/>
+                                                        </ContextMenu>
+                                                    </Button.ContextMenu>
                                                 </Button>
                                             </StackPanel>
                                         </Grid>
+                                        </Border>
                                     </DataTemplate>
                                 </ListBox.ItemTemplate>
                             </ListBox>
@@ -2131,91 +2197,6 @@
                                 </Grid>
                             </Border>
 
-                            <!-- Open Mixer row -->
-                            <Border Padding="18,14">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="0"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="6"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-                                    <Border Grid.Column="0" Width="36" Height="36" Margin="0,0,14,0">
-                                        <TextBlock Text="&#xE15D;" FontFamily="Segoe MDL2 Assets"
-                                                   Foreground="{StaticResource TextMid}" FontSize="16"
-                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                    </Border>
-                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                        <TextBlock Text="Open Volume Mixer" Foreground="{StaticResource TextHi}" FontSize="13" FontWeight="SemiBold"/>
-                                        <TextBlock Text="Show the per-app output mixer without opening EchoX" Foreground="{StaticResource TextMid}" FontSize="12"/>
-                                    </StackPanel>
-                                    <CheckBox Grid.Column="2" VerticalAlignment="Center" Margin="0,0,10,0"
-                                              IsChecked="{Binding KeyBindsViewModel.IsMixerEnabled}"
-                                              Style="{StaticResource ToggleSwitch}"/>
-                                    <Button Grid.Column="4" x:Name="MixerCaptureBtn" Cursor="Hand" VerticalAlignment="Center"
-                                            Click="MixerCaptureBtn_Click">
-                                        <Button.Style>
-                                            <Style TargetType="Button">
-                                                <Setter Property="Background" Value="{StaticResource BgRaised}"/>
-                                                <Setter Property="BorderBrush" Value="{StaticResource Border}"/>
-                                                <Setter Property="BorderThickness" Value="1"/>
-                                                <Setter Property="Template">
-                                                    <Setter.Value>
-                                                        <ControlTemplate TargetType="Button">
-                                                            <Border x:Name="Bg" Background="{TemplateBinding Background}"
-                                                                    BorderBrush="{TemplateBinding BorderBrush}"
-                                                                    BorderThickness="{TemplateBinding BorderThickness}"
-                                                                    CornerRadius="7" Padding="12,6">
-                                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                            </Border>
-                                                            <ControlTemplate.Triggers>
-                                                                <Trigger Property="IsMouseOver" Value="True">
-                                                                    <Setter TargetName="Bg" Property="BorderBrush" Value="{StaticResource Accent}"/>
-                                                                </Trigger>
-                                                            </ControlTemplate.Triggers>
-                                                        </ControlTemplate>
-                                                    </Setter.Value>
-                                                </Setter>
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding KeyBindsViewModel.IsCapturingMixer}" Value="True">
-                                                        <Setter Property="Background" Value="{StaticResource AccentLow}"/>
-                                                        <Setter Property="BorderBrush" Value="{StaticResource Accent}"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </Button.Style>
-                                        <TextBlock Text="{Binding KeyBindsViewModel.MixerDisplay}"
-                                                   Foreground="{StaticResource TextHi}" FontFamily="Consolas" FontSize="12"/>
-                                    </Button>
-                                    <Button Grid.Column="6" Width="28" Height="28" Padding="0"
-                                            Background="Transparent" BorderThickness="0" Cursor="Hand"
-                                            Command="{Binding KeyBindsViewModel.ResetMixerCommand}" ToolTip="Reset to default">
-                                        <Button.Style>
-                                            <Style TargetType="Button">
-                                                <Setter Property="Template">
-                                                    <Setter.Value>
-                                                        <ControlTemplate TargetType="Button">
-                                                            <Border Background="Transparent" CornerRadius="6">
-                                                                <TextBlock x:Name="Ico" Text="&#xE72C;" FontFamily="Segoe MDL2 Assets"
-                                                                           Foreground="{StaticResource TextLow}" FontSize="12"
-                                                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                            </Border>
-                                                            <ControlTemplate.Triggers>
-                                                                <Trigger Property="IsMouseOver" Value="True">
-                                                                    <Setter TargetName="Ico" Property="Foreground" Value="{StaticResource Accent}"/>
-                                                                </Trigger>
-                                                            </ControlTemplate.Triggers>
-                                                        </ControlTemplate>
-                                                    </Setter.Value>
-                                                </Setter>
-                                            </Style>
-                                        </Button.Style>
-                                    </Button>
-                                </Grid>
-                            </Border>
                         </StackPanel>
                     </Border>
 

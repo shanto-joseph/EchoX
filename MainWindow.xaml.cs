@@ -9,6 +9,7 @@ using System.Windows.Media.Imaging;
 using EchoX.ViewModels;
 using Microsoft.Win32;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using System.Windows.Input;
 
@@ -28,12 +29,16 @@ namespace EchoX
         private Icon? _mutedIcon;
         private MuteIndicator? _muteIndicator;
         private AppVolumeMixerWindow? _appVolumeMixerWindow;
+        private AboutWindow? _aboutWindow;
         private int _lastSelectedTabIndex = 0;
         private IntPtr _globalHotkeyHook = IntPtr.Zero;
         private LowLevelHookProc? _globalHotkeyProc;
+        private IntPtr _windowHandle = IntPtr.Zero;
+        private HwndSource? _windowSource;
         private readonly HashSet<int> _pressedKeyVks = new HashSet<int>();
         private readonly HashSet<int> _capturedGestureKeyVks = new HashSet<int>();
         private readonly HashSet<int> _recordedProfileKeyVks = new HashSet<int>();
+        private readonly HashSet<string> _registeredNativeGestures = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private string? _lastTriggeredGesture;
 
         [DllImport("user32.dll", CharSet = CharSet.Auto)]
@@ -72,6 +77,9 @@ namespace EchoX
             SourceInitialized += (_, _) =>
             {
                 var hwnd = new WindowInteropHelper(this).Handle;
+                _windowHandle = hwnd;
+                _windowSource = HwndSource.FromHwnd(hwnd);
+                _windowSource?.AddHook(WndProc);
                 int pref = DWMWCP_ROUND;
                 DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, ref pref, sizeof(int));
 
@@ -81,6 +89,7 @@ namespace EchoX
                 _globalMouseHook = SetWindowsHookEx(WH_MOUSE_LL, _mouseProc, GetModuleHandle(mod.ModuleName!), 0);
                 _globalHotkeyProc = GlobalHotkeyHookCallback;
                 _globalHotkeyHook = SetWindowsHookEx(WH_KEYBOARD_LL, _globalHotkeyProc, GetModuleHandle(mod.ModuleName!), 0);
+                RegisterNativeHotkeys();
             };
         }
 
@@ -99,13 +108,10 @@ namespace EchoX
                     Text = "EchoX Audio Manager"
                 };
 
-                // Double-clicking the tray icon brings the app back up
+                _trayIcon.MouseClick += TrayIcon_MouseClick;
                 _trayIcon.DoubleClick += (s, e) => ShowApp();
 
-                // Right-click menu
-                _trayIcon.ContextMenuStrip = new ContextMenuStrip();
-                _trayIcon.ContextMenuStrip.Items.Add("Open EchoX", null, (s, e) => ShowApp());
-                _trayIcon.ContextMenuStrip.Items.Add("Exit", null, (s, e) => CloseApp());
+                BuildTrayMenu();
             }
             catch (Exception ex)
             {
@@ -113,7 +119,241 @@ namespace EchoX
                 // Fallback: use procedural icon 
                 _activeIcon = CreateIconFromPath(ActiveIconPath, new SolidColorBrush(System.Windows.Media.Color.FromRgb(0, 120, 215)));
                 _trayIcon = new NotifyIcon { Icon = _activeIcon, Visible = true, Text = "EchoX" };
+                _trayIcon.MouseClick += TrayIcon_MouseClick;
+                _trayIcon.DoubleClick += (s, e) => ShowApp();
+                BuildTrayMenu();
             }
+        }
+
+        private void BuildTrayMenu()
+        {
+            var menu = new ContextMenuStrip
+            {
+                ShowImageMargin = true,
+                ShowCheckMargin = false,
+                BackColor = System.Drawing.Color.FromArgb(28, 28, 28),
+                ForeColor = System.Drawing.Color.FromArgb(240, 242, 245),
+                Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular),
+                Padding = new Padding(0),
+                Renderer = new EchoXTrayMenuRenderer()
+            };
+            menu.Opening += (s, e) => ApplyRoundedTrayMenuRegion(menu);
+            menu.SizeChanged += (s, e) => ApplyRoundedTrayMenuRegion(menu);
+            menu.MinimumSize = new System.Drawing.Size(138, 0);
+
+            var openItem = new ToolStripMenuItem("EchoX")
+            {
+                Image = _activeIcon?.ToBitmap(),
+                Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F, System.Drawing.FontStyle.Bold),
+                Padding = new Padding(6, 7, 6, 7),
+                TextAlign = ContentAlignment.MiddleCenter,
+                Tag = "Header"
+            };
+            openItem.Click += (s, e) => ShowApp();
+
+            var mixerItem = CreateTrayMenuItem("Volume Mixer", OpenMixerPopup);
+            var updateItem = CreateTrayMenuItem("Check for Update", async () =>
+            {
+                ShowApp();
+                await _viewModel.AboutViewModel.CheckForUpdatesAsync(false);
+            });
+            var aboutItem = CreateTrayMenuItem("About", OpenAboutWindow);
+            var exitItem = CreateTrayMenuItem("Quit EchoX", CloseApp);
+            exitItem.Tag = "Danger";
+
+            menu.Items.Add(openItem);
+            menu.Items.Add(CreateTraySeparator());
+            menu.Items.Add(mixerItem);
+            menu.Items.Add(updateItem);
+            menu.Items.Add(aboutItem);
+            menu.Items.Add(CreateTraySeparator());
+            menu.Items.Add(exitItem);
+
+            _trayIcon.ContextMenuStrip = menu;
+        }
+
+        private ToolStripMenuItem CreateTrayMenuItem(string text, Action action)
+        {
+            var item = new ToolStripMenuItem(text)
+            {
+                Padding = new Padding(10, 10, 10, 10),
+                Margin = new Padding(0),
+                TextAlign = ContentAlignment.MiddleCenter
+            };
+            item.Click += (s, e) => action();
+            return item;
+        }
+
+        private static ToolStripSeparator CreateTraySeparator()
+        {
+            return new ToolStripSeparator
+            {
+                Margin = new Padding(0),
+                AutoSize = false,
+                Height = 1
+            };
+        }
+
+        private static void ApplyRoundedTrayMenuRegion(ContextMenuStrip menu)
+        {
+            if (menu.Width <= 0 || menu.Height <= 0)
+                return;
+
+            using var path = CreateRoundedRectanglePath(new System.Drawing.Rectangle(0, 0, menu.Width, menu.Height), 14);
+            menu.Region = new Region(path);
+        }
+
+        private void TrayIcon_MouseClick(object? sender, System.Windows.Forms.MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                ShowApp();
+                return;
+            }
+        }
+
+        private static GraphicsPath CreateRoundedRectanglePath(System.Drawing.Rectangle bounds, int radius)
+        {
+            var path = new GraphicsPath();
+            int diameter = radius * 2;
+            var arc = new System.Drawing.Rectangle(bounds.Location, new System.Drawing.Size(diameter, diameter));
+
+            path.AddArc(arc, 180, 90);
+            arc.X = bounds.Right - diameter;
+            path.AddArc(arc, 270, 90);
+            arc.Y = bounds.Bottom - diameter;
+            path.AddArc(arc, 0, 90);
+            arc.X = bounds.Left;
+            path.AddArc(arc, 90, 90);
+            path.CloseFigure();
+            return path;
+        }
+
+        private sealed class EchoXTrayMenuRenderer : ToolStripProfessionalRenderer
+        {
+            public EchoXTrayMenuRenderer() : base(new EchoXTrayMenuColors())
+            {
+                RoundedEdges = false;
+            }
+
+            protected override void OnRenderToolStripBorder(ToolStripRenderEventArgs e)
+            {
+                using var pen = new System.Drawing.Pen(System.Drawing.Color.FromArgb(62, 62, 62));
+                var rect = new System.Drawing.Rectangle(0, 0, e.ToolStrip.Width - 1, e.ToolStrip.Height - 1);
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using var path = CreateRoundedRectanglePath(rect, 14);
+                e.Graphics.DrawPath(pen, path);
+            }
+
+            protected override void OnRenderMenuItemBackground(ToolStripItemRenderEventArgs e)
+            {
+                var isHeader = string.Equals(e.Item.Tag as string, "Header", StringComparison.Ordinal);
+                var isDanger = string.Equals(e.Item.Tag as string, "Danger", StringComparison.Ordinal);
+                if (e.Item is ToolStripSeparator)
+                    return;
+
+                if (!e.Item.Selected)
+                    return;
+
+                var rect = new System.Drawing.Rectangle(6, 3, e.Item.Width - 12, e.Item.Height - 6);
+                using var path = CreateRoundedRectanglePath(rect, 10);
+                using var brush = new SolidBrush(isDanger
+                    ? System.Drawing.Color.FromArgb(70, 37, 37)
+                    : System.Drawing.Color.FromArgb(39, 43, 48));
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                e.Graphics.FillPath(brush, path);
+            }
+
+            protected override void OnRenderImageMargin(ToolStripRenderEventArgs e)
+            {
+                // Suppress the default image gutter so the popup stays compact.
+            }
+
+            protected override void OnRenderItemText(ToolStripItemTextRenderEventArgs e)
+            {
+                if (e.Item is ToolStripSeparator)
+                    return;
+
+                var isHeader = string.Equals(e.Item.Tag as string, "Header", StringComparison.Ordinal);
+                var isDanger = string.Equals(e.Item.Tag as string, "Danger", StringComparison.Ordinal);
+                var color = isDanger
+                    ? System.Drawing.Color.FromArgb(237, 104, 104)
+                    : System.Drawing.Color.FromArgb(240, 242, 245);
+                if (isHeader)
+                {
+                    var textFont = e.TextFont ?? e.Item.Font;
+                    const string echoText = "Echo";
+                    const string xText = "X";
+                    var echoSize = TextRenderer.MeasureText(e.Graphics, echoText, textFont, new System.Drawing.Size(int.MaxValue, int.MaxValue), TextFormatFlags.NoPadding);
+                    var xSize = TextRenderer.MeasureText(e.Graphics, xText, textFont, new System.Drawing.Size(int.MaxValue, int.MaxValue), TextFormatFlags.NoPadding);
+                    int iconSize = 15;
+                    int gap = 3;
+                    int totalWidth = iconSize + gap + echoSize.Width + xSize.Width;
+                    int startX = Math.Max(4, (e.Item.Width - totalWidth) / 2);
+                    int textY = (e.Item.Height - echoSize.Height) / 2;
+
+                    TextRenderer.DrawText(
+                        e.Graphics,
+                        echoText,
+                        textFont,
+                        new System.Drawing.Point(startX + iconSize + gap, textY),
+                        color,
+                        TextFormatFlags.NoPadding);
+                    TextRenderer.DrawText(
+                        e.Graphics,
+                        xText,
+                        textFont,
+                        new System.Drawing.Point(startX + iconSize + gap + echoSize.Width, textY),
+                        System.Drawing.Color.FromArgb(83, 192, 40),
+                        TextFormatFlags.NoPadding);
+                    return;
+                }
+
+                TextRenderer.DrawText(
+                    e.Graphics,
+                    e.Text,
+                    e.TextFont ?? e.Item.Font,
+                    new System.Drawing.Rectangle(0, 0, e.Item.Width, e.Item.Height),
+                    color,
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+            }
+
+            protected override void OnRenderItemImage(ToolStripItemImageRenderEventArgs e)
+            {
+                var isHeader = string.Equals(e.Item.Tag as string, "Header", StringComparison.Ordinal);
+                if (!isHeader || e.Image == null)
+                    return;
+
+                var textFont = e.Item.Font;
+                var text = e.Item.Text ?? string.Empty;
+                var textSize = TextRenderer.MeasureText(e.Graphics, text, textFont, new System.Drawing.Size(int.MaxValue, int.MaxValue), TextFormatFlags.NoPadding);
+                var size = 15;
+                var gap = 3;
+                var totalWidth = size + gap + textSize.Width;
+                var x = Math.Max(4, (e.Item.Width - totalWidth) / 2);
+                var y = (e.Item.Height - size) / 2;
+                e.Graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                e.Graphics.DrawImage(e.Image, new System.Drawing.Rectangle(x, y, size, size));
+            }
+
+            protected override void OnRenderSeparator(ToolStripSeparatorRenderEventArgs e)
+            {
+                using var pen = new System.Drawing.Pen(System.Drawing.Color.FromArgb(72, 72, 72));
+                int y = e.Item.Bounds.Top + (e.Item.Height / 2);
+                e.Graphics.DrawLine(pen, 14, y, e.Item.Width - 14, y);
+            }
+        }
+
+        private sealed class EchoXTrayMenuColors : ProfessionalColorTable
+        {
+            public override System.Drawing.Color ToolStripDropDownBackground => System.Drawing.Color.FromArgb(28, 28, 28);
+            public override System.Drawing.Color MenuBorder => System.Drawing.Color.FromArgb(62, 62, 62);
+            public override System.Drawing.Color MenuItemBorder => System.Drawing.Color.FromArgb(39, 43, 48);
+            public override System.Drawing.Color MenuItemSelected => System.Drawing.Color.FromArgb(39, 43, 48);
+            public override System.Drawing.Color MenuItemSelectedGradientBegin => System.Drawing.Color.FromArgb(39, 43, 48);
+            public override System.Drawing.Color MenuItemSelectedGradientEnd => System.Drawing.Color.FromArgb(39, 43, 48);
+            public override System.Drawing.Color MenuItemPressedGradientBegin => System.Drawing.Color.FromArgb(39, 43, 48);
+            public override System.Drawing.Color MenuItemPressedGradientEnd => System.Drawing.Color.FromArgb(39, 43, 48);
         }
 
         private const string MuteIconPath = "M10.949933333333334 11.892666666666665c-0.688 0.3892 -1.4605333333333332 0.6464666666666666 -2.2831333333333332 0.7374V15.333333333333332h-1.3333333333333333v-2.7032666666666665C4.55236 12.322599999999998 2.3441533333333333 10.1144 2.0367266666666666 7.333333333333333h1.3439733333333335c0.32348 2.2615333333333334 2.26842 4 4.619433333333333 4 0.7000666666666666 0 1.3641333333333332 -0.15413333333333332 1.9601333333333333 -0.43039999999999995l-1.0334666666666665 -1.0334666666666665c-0.2942 0.08499999999999999 -0.6051333333333333 0.13053333333333333 -0.9266666666666665 0.13053333333333333 -1.84098 0 -3.33336 -1.4924 -3.33336 -3.333333333333333V5.609473333333334l-3.7377399999999996 -3.7377333333333334L1.8718466666666667 0.9289333333333333l13.199353333333331 13.199333333333332 -0.9428666666666665 0.9427999999999999 -3.1784 -3.1784Zm1.9665333333333335 -1.7857333333333332 -0.9615999999999999 -0.9616666666666666c0.3389333333333333 -0.5396666666666666 0.5704666666666667 -1.1536666666666666 0.6646666666666666 -1.8119333333333334h1.3439333333333332c-0.1132 1.0244 -0.48433333333333334 1.971 -1.047 2.7736Zm-1.9392666666666667 -1.9393333333333331L5.123833333333333 2.31426C5.702846666666667 1.3284533333333333 6.7742 0.6666666666666666 8.000133333333332 0.6666666666666666c1.8409333333333333 0 3.333333333333333 1.4923866666666665 3.333333333333333 3.333333333333333v2.6666666666666665c0 0.5399333333333333 -0.1284 1.0498666666666665 -0.3562666666666666 1.5009333333333332Z";
@@ -202,7 +442,11 @@ namespace EchoX
         private void SetupHotkeys()
         {
             var kb = _viewModel.KeyBindsViewModel;
-            kb.HotkeysChanged += () => _lastTriggeredGesture = null;
+            kb.HotkeysChanged += () =>
+            {
+                _lastTriggeredGesture = null;
+                RegisterNativeHotkeys();
+            };
         }
 
         private void UpdateHotkeyStatus(bool cycleRegistered, bool muteRegistered) { }
@@ -267,6 +511,12 @@ namespace EchoX
         {
             _isExiting = true;
             _muteIndicator?.Close();
+            UnregisterNativeHotkeys();
+            if (_windowSource != null)
+            {
+                _windowSource.RemoveHook(WndProc);
+                _windowSource = null;
+            }
             if (_globalMouseHook != IntPtr.Zero) UnhookWindowsHookEx(_globalMouseHook);
             if (_globalHotkeyHook != IntPtr.Zero) UnhookWindowsHookEx(_globalHotkeyHook);
             if (_shortcutKbHook != IntPtr.Zero) UnhookWindowsHookEx(_shortcutKbHook);
@@ -293,6 +543,26 @@ namespace EchoX
             ShowApp();
         }
 
+        private void OpenAboutWindow()
+        {
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (_aboutWindow != null && _aboutWindow.IsLoaded)
+                {
+                    _aboutWindow.Activate();
+                    return;
+                }
+
+                _aboutWindow = new AboutWindow(_viewModel.AboutViewModel)
+                {
+                    Owner = this
+                };
+                _aboutWindow.Closed += (s, e) => _aboutWindow = null;
+                _aboutWindow.Show();
+                _aboutWindow.Activate();
+            }));
+        }
+
         private void OpenMixerPopup()
         {
             ShowOutputMixerWindow();
@@ -315,7 +585,7 @@ namespace EchoX
                 : WindowState.Maximized;
 
         private void CloseBtn_Click(object sender, RoutedEventArgs e)
-            => CloseApp();
+            => Close();
 
         private void ProfileHeading_Click(object sender, RoutedEventArgs e)
         {
@@ -334,7 +604,6 @@ namespace EchoX
                 "Profiles" => 1,
                 "Shortcuts" => 2,
                 "Settings" => 3,
-                "About" => 4,
                 _ => 0
             };
 
@@ -386,7 +655,7 @@ namespace EchoX
 
         private void UpdateActiveNavButton(int activeIndex)
         {
-            var navButtons = new[] { BtnNav0, BtnNav1, BtnNav2, BtnNav3, BtnNav4 };
+            var navButtons = new[] { BtnNav0, BtnNav1, BtnNav2, BtnNav3 };
             var active = (Style)FindResource("NavBtnActive");
             var normal = (Style)FindResource("NavBtn");
 
@@ -552,6 +821,8 @@ namespace EchoX
         [System.Runtime.InteropServices.DllImport("user32.dll")] static extern IntPtr SetWindowsHookEx(int idHook, LowLevelHookProc fn, IntPtr hMod, uint threadId);
         [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool UnhookWindowsHookEx(IntPtr hhk);
         [System.Runtime.InteropServices.DllImport("user32.dll")] static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
+        [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
+        [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool UnregisterHotKey(IntPtr hWnd, int id);
         [System.Runtime.InteropServices.DllImport("kernel32.dll")] static extern IntPtr GetModuleHandle(string name);
 
         [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
@@ -561,8 +832,16 @@ namespace EchoX
 
         private const int WH_KEYBOARD_LL = 13, WH_MOUSE_LL = 14;
         private const int WM_KEYDOWN = 0x100, WM_KEYUP = 0x101, WM_SYSKEYDOWN = 0x104, WM_SYSKEYUP = 0x105;
+        private const int WM_HOTKEY = 0x0312;
         private const int WM_XBUTTONDOWN = 0x020B;
         private const int XBUTTON1 = 1, XBUTTON2 = 2;
+        private const uint MOD_ALT = 0x0001;
+        private const uint MOD_CONTROL = 0x0002;
+        private const uint MOD_SHIFT = 0x0004;
+        private const uint MOD_WIN = 0x0008;
+        private const int HotkeyIdOpenApp = 0x4501;
+        private const int HotkeyIdCycle = 0x4502;
+        private const int HotkeyIdMute = 0x4503;
 
         private LowLevelHookProc? _kbProc, _mouseProc;
 
@@ -809,6 +1088,104 @@ namespace EchoX
             return (GetKeyState(virtualKey) & 0x8000) != 0;
         }
 
+        private void RegisterNativeHotkeys()
+        {
+            UnregisterNativeHotkeys();
+
+            if (_windowHandle == IntPtr.Zero)
+                return;
+
+            TryRegisterNativeHotkey(HotkeyIdOpenApp, _viewModel.KeyBindsViewModel.IsOpenAppEnabled, _viewModel.KeyBindsViewModel.OpenAppGesture);
+            TryRegisterNativeHotkey(HotkeyIdCycle, _viewModel.KeyBindsViewModel.IsCycleEnabled, _viewModel.KeyBindsViewModel.CycleGesture);
+            TryRegisterNativeHotkey(HotkeyIdMute, _viewModel.KeyBindsViewModel.IsMuteEnabled, _viewModel.KeyBindsViewModel.MuteGesture);
+        }
+
+        private void UnregisterNativeHotkeys()
+        {
+            if (_windowHandle != IntPtr.Zero)
+            {
+                UnregisterHotKey(_windowHandle, HotkeyIdOpenApp);
+                UnregisterHotKey(_windowHandle, HotkeyIdCycle);
+                UnregisterHotKey(_windowHandle, HotkeyIdMute);
+            }
+
+            _registeredNativeGestures.Clear();
+        }
+
+        private void TryRegisterNativeHotkey(int id, bool isEnabled, string gesture)
+        {
+            if (!isEnabled || !TryConvertGestureToNativeHotkey(gesture, out uint modifiers, out uint virtualKey))
+                return;
+
+            if (RegisterHotKey(_windowHandle, id, modifiers, virtualKey))
+                _registeredNativeGestures.Add(KeyBindsViewModel.NormalizeGesture(gesture));
+        }
+
+        private static bool TryConvertGestureToNativeHotkey(string gesture, out uint modifiers, out uint virtualKey)
+        {
+            modifiers = 0;
+            virtualKey = 0;
+
+            var normalized = KeyBindsViewModel.NormalizeGesture(gesture);
+            if (string.IsNullOrWhiteSpace(normalized))
+                return false;
+
+            Key key = Key.None;
+            int keyCount = 0;
+
+            foreach (var token in normalized.Split(new[] { '+' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                switch (token)
+                {
+                    case "Control":
+                        modifiers |= MOD_CONTROL;
+                        continue;
+                    case "Alt":
+                        modifiers |= MOD_ALT;
+                        continue;
+                    case "Shift":
+                        modifiers |= MOD_SHIFT;
+                        continue;
+                    case "Windows":
+                        modifiers |= MOD_WIN;
+                        continue;
+                }
+
+                if (!Enum.TryParse(token, true, out Key parsedKey) || parsedKey == Key.None)
+                    return false;
+
+                key = parsedKey;
+                keyCount++;
+            }
+
+            if (keyCount != 1)
+                return false;
+
+            virtualKey = (uint)KeyInterop.VirtualKeyFromKey(key);
+            return virtualKey != 0;
+        }
+
+        private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+        {
+            if (msg != WM_HOTKEY || _isCapturingGlobal || _isRecordingShortcut || _isExiting)
+                return IntPtr.Zero;
+
+            Action? action = wParam.ToInt32() switch
+            {
+                HotkeyIdOpenApp => OpenApp,
+                HotkeyIdCycle => CycleProfiles,
+                HotkeyIdMute => ToggleMicMute,
+                _ => null
+            };
+
+            if (action == null)
+                return IntPtr.Zero;
+
+            handled = true;
+            Dispatcher.BeginInvoke(action);
+            return IntPtr.Zero;
+        }
+
         private IntPtr GlobalHotkeyHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
         {
             if (nCode < 0)
@@ -840,6 +1217,9 @@ namespace EchoX
             }
 
             if (string.IsNullOrWhiteSpace(gesture))
+                return CallNextHookEx(_globalHotkeyHook, nCode, wParam, lParam);
+
+            if (_registeredNativeGestures.Contains(KeyBindsViewModel.NormalizeGesture(gesture)))
                 return CallNextHookEx(_globalHotkeyHook, nCode, wParam, lParam);
 
             var action = MatchGlobalGesture(gesture);
@@ -925,8 +1305,19 @@ namespace EchoX
                 return CycleProfiles;
             if (kb.IsMuteEnabled && string.Equals(kb.MuteGesture, gesture, StringComparison.OrdinalIgnoreCase))
                 return ToggleMicMute;
-            if (kb.IsMixerEnabled && string.Equals(kb.MixerGesture, gesture, StringComparison.OrdinalIgnoreCase))
-                return OpenMixerPopup;
+            return null;
+        }
+
+        private Action? MatchGlobalMouseButton(string mouseButton)
+        {
+            var kb = _viewModel.KeyBindsViewModel;
+
+            if (kb.IsOpenAppEnabled && string.Equals(kb.OpenAppMouseButton, mouseButton, StringComparison.OrdinalIgnoreCase))
+                return OpenApp;
+            if (kb.IsCycleEnabled && string.Equals(kb.CycleMouseButton, mouseButton, StringComparison.OrdinalIgnoreCase))
+                return CycleProfiles;
+            if (kb.IsMuteEnabled && string.Equals(kb.MuteMouseButton, mouseButton, StringComparison.OrdinalIgnoreCase))
+                return ToggleMicMute;
 
             return null;
         }
@@ -951,8 +1342,20 @@ namespace EchoX
                         _viewModel.ProfilesViewModel.SaveProfileShortcut(_capturingProfile, null, keyName);
                         StopCapturingGlobal();
                     }
+                    else if (_isCapturingGlobal)
+                    {
+                        _viewModel.KeyBindsViewModel.TryCaptureMouseButton(keyName);
+                        StopCapturingGlobal();
+                    }
                     else
                     {
+                        var action = MatchGlobalMouseButton(keyName);
+                        if (action != null)
+                        {
+                            action();
+                            return;
+                        }
+
                         _viewModel.ProfilesViewModel.HandleMouseButton(keyName);
                     }
                 }));
@@ -1028,6 +1431,27 @@ namespace EchoX
                     StopCapturingGlobal();
                 _viewModel.ProfilesViewModel.ClearProfileShortcut(profile);
             }
+        }
+
+        private void ProfileOptionsBtn_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is System.Windows.Controls.Button button && button.ContextMenu != null)
+            {
+                button.ContextMenu.PlacementTarget = button;
+                button.ContextMenu.IsOpen = true;
+            }
+        }
+
+        private void ProfileMenuEdit_Click(object sender, RoutedEventArgs e)
+        {
+            if ((sender as System.Windows.Controls.MenuItem)?.Tag is EchoX.Models.AudioProfile profile)
+                _viewModel.ProfilesViewModel.EditCommand.Execute(profile);
+        }
+
+        private void ProfileMenuDelete_Click(object sender, RoutedEventArgs e)
+        {
+            if ((sender as System.Windows.Controls.MenuItem)?.Tag is EchoX.Models.AudioProfile profile)
+                _viewModel.ProfilesViewModel.DeleteCommand.Execute(profile);
         }
 
         private T? FindVisualChild<T>(System.Windows.DependencyObject parent, string name) where T : System.Windows.FrameworkElement

@@ -32,6 +32,9 @@ namespace EchoX.ViewModels
         private string _cycleGesture = BuildGesture(DefaultCycleMods, DefaultCycleKey);
         private string _muteGesture = BuildGesture(DefaultMuteMods, DefaultMuteKey);
         private string _mixerGesture = BuildGesture(DefaultMixerMods, DefaultMixerKey);
+        private string _openAppMouseButton = string.Empty;
+        private string _cycleMouseButton = string.Empty;
+        private string _muteMouseButton = string.Empty;
 
         private bool _isOpenAppEnabled = true;
         private bool _isCycleEnabled = true;
@@ -148,16 +151,34 @@ namespace EchoX.ViewModels
             private set { if (SetProperty(ref _openAppGesture, value)) OnPropertyChanged(nameof(OpenAppDisplay)); }
         }
 
+        public string OpenAppMouseButton
+        {
+            get => _openAppMouseButton;
+            private set { if (SetProperty(ref _openAppMouseButton, value)) OnPropertyChanged(nameof(OpenAppDisplay)); }
+        }
+
         public string CycleGesture
         {
             get => _cycleGesture;
             private set { if (SetProperty(ref _cycleGesture, value)) OnPropertyChanged(nameof(CycleDisplay)); }
         }
 
+        public string CycleMouseButton
+        {
+            get => _cycleMouseButton;
+            private set { if (SetProperty(ref _cycleMouseButton, value)) OnPropertyChanged(nameof(CycleDisplay)); }
+        }
+
         public string MuteGesture
         {
             get => _muteGesture;
             private set { if (SetProperty(ref _muteGesture, value)) OnPropertyChanged(nameof(MuteDisplay)); }
+        }
+
+        public string MuteMouseButton
+        {
+            get => _muteMouseButton;
+            private set { if (SetProperty(ref _muteMouseButton, value)) OnPropertyChanged(nameof(MuteDisplay)); }
         }
 
         public string MixerGesture
@@ -190,10 +211,10 @@ namespace EchoX.ViewModels
             set { SetProperty(ref _isCapturingMixer, value); OnPropertyChanged(nameof(MixerDisplay)); }
         }
 
-        public string OpenAppDisplay => IsCapturingOpenApp ? "Press keys…" : FormatGesture(OpenAppGesture);
-        public string CycleDisplay => IsCapturingCycle ? "Press keys…" : FormatGesture(CycleGesture);
-        public string MuteDisplay => IsCapturingMute ? "Press keys…" : FormatGesture(MuteGesture);
-        public string MixerDisplay => IsCapturingMixer ? "Press keys…" : FormatGesture(MixerGesture);
+        public string OpenAppDisplay => IsCapturingOpenApp ? "Press keys..." : FormatAssignedShortcut(OpenAppMouseButton, OpenAppGesture);
+        public string CycleDisplay => IsCapturingCycle ? "Press keys..." : FormatAssignedShortcut(CycleMouseButton, CycleGesture);
+        public string MuteDisplay => IsCapturingMute ? "Press keys..." : FormatAssignedShortcut(MuteMouseButton, MuteGesture);
+        public string MixerDisplay => IsCapturingMixer ? "Press keys..." : FormatGesture(MixerGesture);
 
         public bool TryCaptureGesture(string gesture)
         {
@@ -208,6 +229,7 @@ namespace EchoX.ViewModels
                 OpenAppGesture = gesture;
                 OpenAppMods = mods;
                 OpenAppKey = key;
+                OpenAppMouseButton = string.Empty;
                 IsCapturingOpenApp = false;
                 SaveAll();
                 RaiseRebind();
@@ -219,6 +241,7 @@ namespace EchoX.ViewModels
                 CycleGesture = gesture;
                 CycleMods = mods;
                 CycleKey = key;
+                CycleMouseButton = string.Empty;
                 IsCapturingCycle = false;
                 SaveAll();
                 RaiseRebind();
@@ -230,6 +253,7 @@ namespace EchoX.ViewModels
                 MuteGesture = gesture;
                 MuteMods = mods;
                 MuteKey = key;
+                MuteMouseButton = string.Empty;
                 IsCapturingMute = false;
                 SaveAll();
                 RaiseRebind();
@@ -242,6 +266,50 @@ namespace EchoX.ViewModels
                 MixerMods = mods;
                 MixerKey = key;
                 IsCapturingMixer = false;
+                SaveAll();
+                RaiseRebind();
+                return true;
+            }
+
+            return false;
+        }
+
+        public bool TryCaptureMouseButton(string mouseButton)
+        {
+            if (string.IsNullOrWhiteSpace(mouseButton))
+                return false;
+
+            if (IsCapturingOpenApp)
+            {
+                OpenAppGesture = string.Empty;
+                OpenAppMods = ModifierKeys.None;
+                OpenAppKey = Key.None;
+                OpenAppMouseButton = mouseButton;
+                IsCapturingOpenApp = false;
+                SaveAll();
+                RaiseRebind();
+                return true;
+            }
+
+            if (IsCapturingCycle)
+            {
+                CycleGesture = string.Empty;
+                CycleMods = ModifierKeys.None;
+                CycleKey = Key.None;
+                CycleMouseButton = mouseButton;
+                IsCapturingCycle = false;
+                SaveAll();
+                RaiseRebind();
+                return true;
+            }
+
+            if (IsCapturingMute)
+            {
+                MuteGesture = string.Empty;
+                MuteMods = ModifierKeys.None;
+                MuteKey = Key.None;
+                MuteMouseButton = mouseButton;
+                IsCapturingMute = false;
                 SaveAll();
                 RaiseRebind();
                 return true;
@@ -277,10 +345,13 @@ namespace EchoX.ViewModels
 
             if (Enum.TryParse<Key>(s.OpenAppKey, out var ok)) OpenAppKey = ok;
             if (Enum.TryParse<ModifierKeys>(s.OpenAppMods, out var om)) OpenAppMods = om;
+            OpenAppMouseButton = s.OpenAppMouseButton ?? string.Empty;
             if (Enum.TryParse<Key>(s.CycleKey, out var ck)) CycleKey = ck;
             if (Enum.TryParse<ModifierKeys>(s.CycleMods, out var cm)) CycleMods = cm;
+            CycleMouseButton = s.CycleMouseButton ?? string.Empty;
             if (Enum.TryParse<Key>(s.MuteKey, out var mk)) MuteKey = mk;
             if (Enum.TryParse<ModifierKeys>(s.MuteMods, out var mm)) MuteMods = mm;
+            MuteMouseButton = s.MuteMouseButton ?? string.Empty;
             if (Enum.TryParse<Key>(s.MixerKey, out var xik)) MixerKey = xik;
             if (Enum.TryParse<ModifierKeys>(s.MixerMods, out var xim)) MixerMods = xim;
 
@@ -301,10 +372,13 @@ namespace EchoX.ViewModels
             {
                 OpenAppKey = OpenAppKey.ToString(),
                 OpenAppMods = OpenAppMods.ToString(),
+                OpenAppMouseButton = OpenAppMouseButton,
                 CycleKey = CycleKey.ToString(),
                 CycleMods = CycleMods.ToString(),
+                CycleMouseButton = CycleMouseButton,
                 MuteKey = MuteKey.ToString(),
                 MuteMods = MuteMods.ToString(),
+                MuteMouseButton = MuteMouseButton,
                 MixerKey = MixerKey.ToString(),
                 MixerMods = MixerMods.ToString(),
                 OpenAppGesture = OpenAppGesture,
@@ -395,6 +469,19 @@ namespace EchoX.ViewModels
             return FormatGesture(BuildGesture(mods, key));
         }
 
+        private static string FormatAssignedShortcut(string mouseButton, string gesture)
+        {
+            if (!string.IsNullOrWhiteSpace(mouseButton))
+                return mouseButton switch
+                {
+                    "XButton1" => "Mouse Button 4",
+                    "XButton2" => "Mouse Button 5",
+                    _ => mouseButton
+                };
+
+            return FormatGesture(gesture);
+        }
+
         private static (ModifierKeys mods, Key key) TryExtractSingleKeyGesture(string gesture)
         {
             var mods = ModifierKeys.None;
@@ -426,16 +513,19 @@ namespace EchoX.ViewModels
                     OpenAppKey = key;
                     OpenAppMods = mods;
                     OpenAppGesture = gesture;
+                    OpenAppMouseButton = string.Empty;
                     break;
                 case "cycle":
                     CycleKey = key;
                     CycleMods = mods;
                     CycleGesture = gesture;
+                    CycleMouseButton = string.Empty;
                     break;
                 case "mute":
                     MuteKey = key;
                     MuteMods = mods;
                     MuteGesture = gesture;
+                    MuteMouseButton = string.Empty;
                     break;
                 case "mixer":
                     MixerKey = key;

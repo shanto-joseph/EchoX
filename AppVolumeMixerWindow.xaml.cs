@@ -27,9 +27,9 @@ namespace EchoX
             _devicesViewModel.PropertyChanged += DevicesViewModel_PropertyChanged;
             Loaded += AppVolumeMixerWindow_Loaded;
 
-            _refreshTimer = new System.Windows.Threading.DispatcherTimer
+            _refreshTimer = new System.Windows.Threading.DispatcherTimer(System.Windows.Threading.DispatcherPriority.Background)
             {
-                Interval = TimeSpan.FromMilliseconds(1200)
+                Interval = TimeSpan.FromMilliseconds(1800)
             };
             _refreshTimer.Tick += async (s, e) => await RefreshSessionsAsync();
 
@@ -71,30 +71,42 @@ namespace EchoX
                     return;
 
                 var sessionIds = snapshots.Select(s => s.SessionId).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                var existingById = _sessions.ToDictionary(s => s.SessionId, StringComparer.OrdinalIgnoreCase);
+                var orderChanged = false;
 
                 foreach (var stale in _sessions.Where(s => !sessionIds.Contains(s.SessionId)).ToList())
+                {
                     _sessions.Remove(stale);
+                    orderChanged = true;
+                }
 
                 foreach (var snapshot in snapshots)
                 {
-                    var existing = _sessions.FirstOrDefault(s => string.Equals(s.SessionId, snapshot.SessionId, StringComparison.OrdinalIgnoreCase));
+                    existingById.TryGetValue(snapshot.SessionId, out var existing);
                     if (existing == null)
                     {
                         _sessions.Add(new AppVolumeSessionViewModel(
                             snapshot,
                             _devicesViewModel.SetOutputSessionVolume,
                             _devicesViewModel.SetOutputSessionMute));
+                        orderChanged = true;
                     }
                     else
                     {
+                        if (!string.Equals(existing.AppName, snapshot.DisplayName, StringComparison.OrdinalIgnoreCase))
+                            orderChanged = true;
+
                         existing.ApplySnapshot(snapshot);
                     }
                 }
 
-                var ordered = _sessions.OrderBy(s => s.AppName, StringComparer.OrdinalIgnoreCase).ToList();
-                _sessions.Clear();
-                foreach (var session in ordered)
-                    _sessions.Add(session);
+                if (orderChanged)
+                {
+                    var ordered = _sessions.OrderBy(s => s.AppName, StringComparer.OrdinalIgnoreCase).ToList();
+                    _sessions.Clear();
+                    foreach (var session in ordered)
+                        _sessions.Add(session);
+                }
 
                 EmptyStateText.Visibility = _sessions.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
             }
