@@ -563,6 +563,11 @@ namespace EchoX
             }));
         }
 
+        private void AboutSeeMoreBtn_Click(object sender, RoutedEventArgs e)
+        {
+            OpenAboutWindow();
+        }
+
         private void OpenMixerPopup()
         {
             ShowOutputMixerWindow();
@@ -864,6 +869,7 @@ namespace EchoX
         {
             _isRecordingShortcut = true;
             _recordedProfileKeyVks.Clear();
+            _viewModel.ProfilesViewModel.ShortcutWarning = null;
 
             var btn = RecordShortcutBtn;
             var idle = FindVisualChild<System.Windows.Controls.StackPanel>(btn, "IdlePanel");
@@ -900,6 +906,7 @@ namespace EchoX
         {
             _isCapturingGlobal = true;
             _capturedGestureKeyVks.Clear();
+            _viewModel.KeyBindsViewModel.ConflictWarning = null;
             if (_globalKbCapHook == IntPtr.Zero)
             {
                 using var mod = System.Diagnostics.Process.GetCurrentProcess().MainModule!;
@@ -948,9 +955,34 @@ namespace EchoX
                 Dispatcher.BeginInvoke(new Action(() =>
                 {
                     if (profile != null)
-                        _viewModel.ProfilesViewModel.SaveProfileShortcut(profile, gesture, null);
+                    {
+                        var conflict = GetShortcutConflictOwner(gesture, null, profile.Id, null);
+                        if (conflict != null)
+                        {
+                            profile.IsCapturingShortcut = false;
+                            _viewModel.ProfilesViewModel.ShortcutWarning = $"Already used by {conflict}.";
+                        }
+                        else
+                        {
+                            _viewModel.ProfilesViewModel.ShortcutWarning = null;
+                            _viewModel.ProfilesViewModel.SaveProfileShortcut(profile, gesture, null);
+                        }
+                    }
                     else
-                        _viewModel.KeyBindsViewModel.TryCaptureGesture(gesture);
+                    {
+                        var actionName = GetCapturingGlobalActionName();
+                        var conflict = GetShortcutConflictOwner(gesture, null, null, actionName);
+                        if (conflict != null)
+                        {
+                            _viewModel.KeyBindsViewModel.ConflictWarning = $"Already used by {conflict}.";
+                            _viewModel.KeyBindsViewModel.CancelCapture();
+                        }
+                        else
+                        {
+                            _viewModel.KeyBindsViewModel.ConflictWarning = null;
+                            _viewModel.KeyBindsViewModel.TryCaptureGesture(gesture);
+                        }
+                    }
                     StopCapturingGlobal();
                 }));
                 return (IntPtr)1;
@@ -982,12 +1014,10 @@ namespace EchoX
 
                 Dispatcher.BeginInvoke(new Action(() =>
                 {
-                    // Check for conflict before assigning
-                    string? conflict = _viewModel.ProfilesViewModel.GetShortcutConflict(gesture, null, null);
+                    string? conflict = GetShortcutConflictOwner(gesture, null, _viewModel.ProfilesViewModel.SelectedProfile?.Id, null);
                     if (conflict != null)
                     {
-                        _viewModel.ProfilesViewModel.SetShortcutFromKey(key, mods); // still set it
-                        _viewModel.ProfilesViewModel.ShortcutWarning = $"Already used by \"{conflict}\"";
+                        _viewModel.ProfilesViewModel.ShortcutWarning = $"Already used by {conflict}.";
                     }
                     else
                     {
@@ -1031,11 +1061,10 @@ namespace EchoX
             Dispatcher.BeginInvoke(new Action(() =>
             {
                 var excludeProfileId = _viewModel.ProfilesViewModel.SelectedProfile?.Id;
-                string? conflict = _viewModel.ProfilesViewModel.GetShortcutConflict(gesture, null, excludeProfileId);
+                string? conflict = GetShortcutConflictOwner(gesture, null, excludeProfileId, null);
                 if (conflict != null)
                 {
-                    _viewModel.ProfilesViewModel.SetShortcutFromGesture(gesture);
-                    _viewModel.ProfilesViewModel.ShortcutWarning = $"Already used by \"{conflict}\"";
+                    _viewModel.ProfilesViewModel.ShortcutWarning = $"Already used by {conflict}.";
                 }
                 else
                 {
@@ -1343,17 +1372,49 @@ namespace EchoX
                 {
                     if (_isRecordingShortcut)
                     {
-                        _viewModel.ProfilesViewModel.SetMouseShortcut(label, keyName);
+                        var excludeProfileId = _viewModel.ProfilesViewModel.SelectedProfile?.Id;
+                        var conflict = GetShortcutConflictOwner(null, keyName, excludeProfileId, null);
+                        if (conflict != null)
+                        {
+                            _viewModel.ProfilesViewModel.ShortcutWarning = $"Already used by {conflict}.";
+                        }
+                        else
+                        {
+                            _viewModel.ProfilesViewModel.ShortcutWarning = null;
+                            _viewModel.ProfilesViewModel.SetMouseShortcut(label, keyName);
+                        }
                         StopRecording();
                     }
                     else if (_isCapturingGlobal && _capturingProfile != null)
                     {
-                        _viewModel.ProfilesViewModel.SaveProfileShortcut(_capturingProfile, null, keyName);
+                        var profile = _capturingProfile;
+                        var conflict = GetShortcutConflictOwner(null, keyName, profile.Id, null);
+                        if (conflict != null)
+                        {
+                            profile.IsCapturingShortcut = false;
+                            _viewModel.ProfilesViewModel.ShortcutWarning = $"Already used by {conflict}.";
+                        }
+                        else
+                        {
+                            _viewModel.ProfilesViewModel.ShortcutWarning = null;
+                            _viewModel.ProfilesViewModel.SaveProfileShortcut(profile, null, keyName);
+                        }
                         StopCapturingGlobal();
                     }
                     else if (_isCapturingGlobal)
                     {
-                        _viewModel.KeyBindsViewModel.TryCaptureMouseButton(keyName);
+                        var actionName = GetCapturingGlobalActionName();
+                        var conflict = GetShortcutConflictOwner(null, keyName, null, actionName);
+                        if (conflict != null)
+                        {
+                            _viewModel.KeyBindsViewModel.ConflictWarning = $"Already used by {conflict}.";
+                            _viewModel.KeyBindsViewModel.CancelCapture();
+                        }
+                        else
+                        {
+                            _viewModel.KeyBindsViewModel.ConflictWarning = null;
+                            _viewModel.KeyBindsViewModel.TryCaptureMouseButton(keyName);
+                        }
                         StopCapturingGlobal();
                     }
                     else
@@ -1383,6 +1444,7 @@ namespace EchoX
         {
             var kb = _viewModel.KeyBindsViewModel;
             if (kb.IsCapturingCycle) { kb.CancelCapture(); StopCapturingGlobal(); return; }
+            kb.ConflictWarning = null;
             kb.StartCaptureCycleCommand.Execute(null);
             StartCapturingGlobal();
         }
@@ -1391,6 +1453,7 @@ namespace EchoX
         {
             var kb = _viewModel.KeyBindsViewModel;
             if (kb.IsCapturingMute) { kb.CancelCapture(); StopCapturingGlobal(); return; }
+            kb.ConflictWarning = null;
             kb.StartCaptureMuteCommand.Execute(null);
             StartCapturingGlobal();
         }
@@ -1399,6 +1462,7 @@ namespace EchoX
         {
             var kb = _viewModel.KeyBindsViewModel;
             if (kb.IsCapturingOpenApp) { kb.CancelCapture(); StopCapturingGlobal(); return; }
+            kb.ConflictWarning = null;
             kb.StartCaptureOpenAppCommand.Execute(null);
             StartCapturingGlobal();
         }
@@ -1407,6 +1471,7 @@ namespace EchoX
         {
             var kb = _viewModel.KeyBindsViewModel;
             if (kb.IsCapturingMixer) { kb.CancelCapture(); StopCapturingGlobal(); return; }
+            kb.ConflictWarning = null;
             kb.StartCaptureMixerCommand.Execute(null);
             StartCapturingGlobal();
         }
@@ -1426,6 +1491,7 @@ namespace EchoX
                 if (_capturingProfile != null) _capturingProfile.IsCapturingShortcut = false;
                 StopCapturingGlobal();
 
+                _viewModel.ProfilesViewModel.ShortcutWarning = null;
                 profile.IsCapturingShortcut = true;
                 _capturingProfile = profile;
                 StartCapturingGlobal();
@@ -1438,8 +1504,54 @@ namespace EchoX
             {
                 if (_isCapturingGlobal && _capturingProfile == profile)
                     StopCapturingGlobal();
+                _viewModel.ProfilesViewModel.ShortcutWarning = null;
                 _viewModel.ProfilesViewModel.ClearProfileShortcut(profile);
             }
+        }
+
+        private string? GetCapturingGlobalActionName()
+        {
+            var kb = _viewModel.KeyBindsViewModel;
+            if (kb.IsCapturingOpenApp) return "Open App";
+            if (kb.IsCapturingCycle) return "Cycle Profiles";
+            if (kb.IsCapturingMute) return "Toggle Mic Mute";
+            if (kb.IsCapturingMixer) return "Volume Mixer";
+            return null;
+        }
+
+        private string? GetShortcutConflictOwner(string? gesture, string? mouseButton, string? excludeProfileId, string? excludeGlobalAction)
+        {
+            var kb = _viewModel.KeyBindsViewModel;
+            var normalizedGesture = string.IsNullOrWhiteSpace(gesture)
+                ? null
+                : KeyBindsViewModel.NormalizeGesture(gesture!);
+
+            bool MatchesGlobal(string actionName, string? assignedGesture, string? assignedMouseButton)
+            {
+                if (string.Equals(actionName, excludeGlobalAction, StringComparison.OrdinalIgnoreCase))
+                    return false;
+
+                if (!string.IsNullOrWhiteSpace(mouseButton) &&
+                    string.Equals(assignedMouseButton, mouseButton, StringComparison.OrdinalIgnoreCase))
+                    return true;
+
+                return !string.IsNullOrWhiteSpace(normalizedGesture) &&
+                       !string.IsNullOrWhiteSpace(assignedGesture) &&
+                       string.Equals(KeyBindsViewModel.NormalizeGesture(assignedGesture!), normalizedGesture, StringComparison.OrdinalIgnoreCase);
+            }
+
+            if (MatchesGlobal("Open App", kb.OpenAppGesture, kb.OpenAppMouseButton))
+                return "\"Open App\"";
+            if (MatchesGlobal("Cycle Profiles", kb.CycleGesture, kb.CycleMouseButton))
+                return "\"Cycle Profiles\"";
+            if (MatchesGlobal("Toggle Mic Mute", kb.MuteGesture, kb.MuteMouseButton))
+                return "\"Toggle Mic Mute\"";
+
+            var profileConflict = _viewModel.ProfilesViewModel.GetShortcutConflict(normalizedGesture, mouseButton, excludeProfileId);
+            if (!string.IsNullOrWhiteSpace(profileConflict))
+                return $"profile \"{profileConflict}\"";
+
+            return null;
         }
 
         private void ProfileOptionsBtn_Click(object sender, RoutedEventArgs e)

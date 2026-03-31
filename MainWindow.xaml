@@ -2208,6 +2208,25 @@
                     </Border>
 
                     <!-- ── Profile Shortcuts ── -->
+                    <TextBlock Text="{Binding KeyBindsViewModel.ConflictWarning}"
+                               Foreground="{StaticResource Amber}"
+                               FontSize="11"
+                               TextWrapping="Wrap"
+                               Margin="0,-10,0,20">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Visible"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding KeyBindsViewModel.ConflictWarning}" Value="{x:Null}">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding KeyBindsViewModel.ConflictWarning}" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
                     <TextBlock Text="PROFILE SHORTCUTS" Foreground="{StaticResource TextLow}"
                                FontSize="10" FontWeight="SemiBold" Margin="0,0,0,8"/>
 
@@ -2355,6 +2374,25 @@
                             </ItemsControl>
                         </StackPanel>
                     </Border>
+                    <TextBlock Text="{Binding ProfilesViewModel.ShortcutWarning}"
+                               Foreground="{StaticResource Amber}"
+                               FontSize="11"
+                               TextWrapping="Wrap"
+                               Margin="0,8,0,0">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Visible"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding ProfilesViewModel.ShortcutWarning}" Value="{x:Null}">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding ProfilesViewModel.ShortcutWarning}" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
 
                 </StackPanel>
                 </ScrollViewer>
@@ -2708,6 +2746,16 @@
                                 <TextBlock Foreground="{StaticResource TextMid}" FontSize="12"
                                            TextWrapping="Wrap" LineHeight="20" Margin="0,10,0,0"
                                            Text="A lightweight audio device manager for Windows. Switch microphones and speakers instantly using profiles and global hotkeys."/>
+                                <TextBlock Foreground="{StaticResource TextMid}"
+                                           FontSize="12"
+                                           Margin="0,12,0,0">
+                                    <Run Text="Want more details? "/>
+                                    <Hyperlink Click="AboutSeeMoreBtn_Click"
+                                               Foreground="{StaticResource Accent}"
+                                               TextDecorations="{x:Null}">
+                                        See more...
+                                    </Hyperlink>
+                                </TextBlock>
                             </StackPanel>
                         </Grid>
                     </Border>

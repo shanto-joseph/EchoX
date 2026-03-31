@@ -45,6 +45,7 @@ namespace EchoX.ViewModels
         private bool _isCapturingCycle;
         private bool _isCapturingMute;
         private bool _isCapturingMixer;
+        private string? _conflictWarning;
 
         public KeyBindsViewModel(StorageService storageService)
         {
@@ -215,6 +216,12 @@ namespace EchoX.ViewModels
         public string CycleDisplay => IsCapturingCycle ? "Press keys..." : FormatAssignedShortcut(CycleMouseButton, CycleGesture);
         public string MuteDisplay => IsCapturingMute ? "Press keys..." : FormatAssignedShortcut(MuteMouseButton, MuteGesture);
         public string MixerDisplay => IsCapturingMixer ? "Press keys..." : FormatGesture(MixerGesture);
+
+        public string? ConflictWarning
+        {
+            get => _conflictWarning;
+            set => SetProperty(ref _conflictWarning, value);
+        }
 
         public bool TryCaptureGesture(string gesture)
         {

@@ -56,6 +56,7 @@ namespace EchoX
             {
                 LogoIcon.Visibility = Visibility.Collapsed;
                 NotificationIcon.Visibility = Visibility.Collapsed;
+                MicBadge.Visibility = Visibility.Visible;
                 bool isMuted = message.Equals("Muted", StringComparison.OrdinalIgnoreCase);
                 if (isMuted)
                 {
