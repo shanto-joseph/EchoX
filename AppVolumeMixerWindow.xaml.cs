@@ -16,8 +16,10 @@ namespace EchoX
         private readonly DevicesViewModel _devicesViewModel;
         private readonly ObservableCollection<AppVolumeSessionViewModel> _sessions = new ObservableCollection<AppVolumeSessionViewModel>();
         private readonly System.Windows.Threading.DispatcherTimer _refreshTimer;
+        private readonly System.Windows.Threading.DispatcherTimer _focusWatchTimer;
         private bool _isClosing;
         private bool _isRefreshing;
+        private DateTime _suppressAutoCloseUntil = DateTime.MinValue;
 
         public AppVolumeMixerWindow(DevicesViewModel devicesViewModel)
         {
@@ -33,16 +35,25 @@ namespace EchoX
             };
             _refreshTimer.Tick += async (s, e) => await RefreshSessionsAsync();
 
+            _focusWatchTimer = new System.Windows.Threading.DispatcherTimer(System.Windows.Threading.DispatcherPriority.Background)
+            {
+                Interval = TimeSpan.FromMilliseconds(120)
+            };
+            _focusWatchTimer.Tick += FocusWatchTimer_Tick;
+
             Loaded += async (s, e) =>
             {
                 await RefreshSessionsAsync();
                 _refreshTimer.Start();
+                _focusWatchTimer.Start();
             };
 
             Closed += (s, e) =>
             {
                 _refreshTimer.Stop();
+                _focusWatchTimer.Stop();
                 _devicesViewModel.PropertyChanged -= DevicesViewModel_PropertyChanged;
+                _focusWatchTimer.Tick -= FocusWatchTimer_Tick;
             };
         }
 
@@ -140,6 +151,23 @@ namespace EchoX
             Top = area.Top + Math.Max(0, (area.Height - Height) / 2.0);
         }
 
+        public void BringToFront()
+        {
+            if (_isClosing || !IsLoaded)
+                return;
+
+            _suppressAutoCloseUntil = DateTime.UtcNow.AddMilliseconds(300);
+
+            if (WindowState == WindowState.Minimized)
+                WindowState = WindowState.Normal;
+
+            Show();
+            Topmost = true;
+            Activate();
+            Focus();
+            Topmost = false;
+        }
+
         private void AppVolumeMixerWindow_Loaded(object sender, RoutedEventArgs e)
         {
             RefreshSystemVolumeUi();
@@ -180,6 +208,32 @@ namespace EchoX
                 return;
 
             DragMove();
+        }
+
+        private void Window_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            if (e.Key != Key.Escape)
+                return;
+
+            e.Handled = true;
+            BeginClose();
+        }
+
+        private void FocusWatchTimer_Tick(object? sender, EventArgs e)
+        {
+            if (_isClosing || !IsLoaded || !IsVisible)
+                return;
+
+            if (DateTime.UtcNow < _suppressAutoCloseUntil)
+                return;
+
+            if (!IsActive)
+                BeginClose();
+        }
+
+        private void CloseBtn_Click(object sender, RoutedEventArgs e)
+        {
+            BeginClose();
         }
 
         private void RefreshSystemVolumeUi()
@@ -239,7 +293,5 @@ namespace EchoX
 
             return null;
         }
-
-        private void CloseBtn_Click(object sender, RoutedEventArgs e) => BeginClose();
     }
 }

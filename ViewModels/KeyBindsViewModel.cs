@@ -16,7 +16,7 @@ namespace EchoX.ViewModels
         private static readonly ModifierKeys DefaultCycleMods = ModifierKeys.Control | ModifierKeys.Alt;
         private static readonly Key DefaultMuteKey = Key.K;
         private static readonly ModifierKeys DefaultMuteMods = ModifierKeys.Control | ModifierKeys.Alt;
-        private static readonly Key DefaultMixerKey = Key.V;
+        private static readonly Key DefaultMixerKey = Key.M;
         private static readonly ModifierKeys DefaultMixerMods = ModifierKeys.Control | ModifierKeys.Alt;
 
         private Key _openAppKey = DefaultOpenAppKey;

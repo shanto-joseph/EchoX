@@ -41,7 +41,11 @@ public partial class App : System.Windows.Application
             ex.Handled = true;
         };
 
-        var mainWindow = new MainWindow();
+        bool launchToTray = e.Args.Any(arg =>
+            string.Equals(arg, "--tray", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(arg, "/tray", StringComparison.OrdinalIgnoreCase));
+
+        var mainWindow = new MainWindow(launchToTray);
         MainWindow = mainWindow;
         mainWindow.Show();
     }

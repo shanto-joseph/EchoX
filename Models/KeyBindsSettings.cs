@@ -9,14 +9,14 @@ namespace EchoX.Models
         public string OpenAppKey  { get; set; } = "X";
         public string OpenAppMods { get; set; } = "Shift, Alt";
         public string OpenAppMouseButton { get; set; } = string.Empty;
-        public string MixerKey  { get; set; } = "V";
+        public string MixerKey  { get; set; } = "M";
         public string MixerMods { get; set; } = "Control, Alt";
         public string OpenAppGesture { get; set; } = "Alt+Shift+X";
         public string CycleGesture   { get; set; } = "Control+Alt+S";
         public string CycleMouseButton { get; set; } = string.Empty;
         public string MuteGesture    { get; set; } = "Control+Alt+K";
         public string MuteMouseButton { get; set; } = string.Empty;
-        public string MixerGesture   { get; set; } = "Control+Alt+V";
+        public string MixerGesture   { get; set; } = "Control+Alt+M";
         public bool IsOpenAppEnabled { get; set; } = true;
         public bool IsCycleEnabled   { get; set; } = true;
         public bool IsMuteEnabled    { get; set; } = true;

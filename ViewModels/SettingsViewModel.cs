@@ -235,7 +235,7 @@ namespace EchoX.ViewModels
             {
                 using var key = Registry.CurrentUser.OpenSubKey(RunKeyPath, true);
                 if (enable)
-                    key?.SetValue(AppName, $"\"{Assembly.GetExecutingAssembly().Location}\"");
+                    key?.SetValue(AppName, $"\"{Assembly.GetExecutingAssembly().Location}\" --tray");
                 else
                     key?.DeleteValue(AppName, false);
             }
