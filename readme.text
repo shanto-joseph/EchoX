@@ -1,0 +1,81 @@
+================================================================================
+                                 E C H O X                                      
+                           Advanced Audio Manager                               
+================================================================================
+
+INTRODUCTION
+------------
+EchoX is a powerful Windows-based audio management application designed to give 
+users complete control over their system's audio playback and recording devices. 
+Built using WPF and adhering to the MVVM architectural pattern, EchoX provides 
+a modern, high-fidelity user interface for managing audio profiles, app-specific 
+volumes, and global keyboard shortcuts.
+
+KEY FEATURES
+------------
+* Dynamic Audio Profiles: Create, save, and switch between custom audio 
+  profiles for different scenarios (e.g., Gaming, Work, Communication).
+* App-Aware Automation: (In development) Automatically switch audio 
+  profiles based on currently running applications.
+* Application Volume Mixer: A dedicated interface for managing individual 
+  application volumes, similar to the Windows Volume Mixer but enhanced.
+* Global Keybindings: Control the application via custom hotkeys, including 
+  support for Fn keys and mouse side buttons.
+* Real-time Microphone Testing: Visualize and test microphone input with 
+  high-fidelity level meters and breathing animations.
+* Overlay Support: Customizable UI overlays to provide quick feedback or 
+  control status during full-screen applications.
+* Modern GUI: A sleek, professional interface with custom branding, 
+  smooth animations, and dark-mode aesthetics.
+
+PROJECT ARCHITECTURE
+---------------------
+The project follows the Model-View-ViewModel (MVVM) pattern to ensure 
+separability of concerns and maintainability:
+
+* Models: Contain the core data structures (e.g., AudioDevice, AudioProfile, 
+  KeyBindsSettings).
+* ViewModels: Handle application logic and data binding (e.g., ProfilesViewModel, 
+  DevicesViewModel, MainWindowViewModel).
+* Services: Provide low-level system functionality (e.g., AudioEngine, 
+  StorageService, OverlayLayoutService).
+* Views: The XAML-based user interface components (e.g., MainWindow, 
+  AboutWindow, OverlayArrangementWindow).
+* Converters: Value converters for XAML data binding (e.g., visibility, colors).
+
+TECHNICAL SPECIFICATIONS
+------------------------
+* Platform: Windows (.NET Framework 4.8)
+* Framework: WPF (Windows Presentation Foundation)
+* Main Dependencies:
+  - AudioSwitcher.AudioApi.CoreAudio: Low-level audio device control.
+  NAudio: Advanced audio input/output processing.
+  NHotkey.Wpf: Managed global hotkeys.
+  Newtonsoft.Json: JSON-based settings storage.
+  Microsoft.Toolkit.Uwp.Notifications: Toast notification support.
+
+PROJECT STRUCTURE
+-----------------
+/Assets             - Icons, images, and audio assets (EchoX logo, wav files).
+/Converters         - XAML value converters for styling and visibility logic.
+/Models             - Data objects representing devices, profiles, and settings.
+/Services           - Core logic for audio processing, storage, and overlays.
+/UI                 - Custom UI components and reusable XAML resources.
+/ViewModels         - Application state and logic for binding to the UI.
+/plans              - Development notes and todo lists.
+EchoX.csproj        - Project configuration and dependency manifest.
+MainWindow.xaml     - Primary application window and layout.
+App.xaml            - Root application configuration and global styles.
+
+CURRENT DEVELOPMENT STATUS (ROADMAP)
+--------------------------------------
+(See plans/todo.md for full details)
+- Integrating RNNoise for advanced noise suppression.
+- Refining application window dragging behavior.
+- Enhancing automated update check mechanism.
+- Optimizing microphone testing states during tab traversal.
+- Developing app-aware trigger system for automatic profile switching.
+
+================================================================================
+                                   EchoX Project                                
+================================================================================
