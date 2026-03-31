@@ -55,6 +55,13 @@ namespace EchoX
         {
             InitializeComponent();
             _launchToTrayOnStartup = launchToTrayOnStartup;
+            if (_launchToTrayOnStartup)
+            {
+                ShowActivated = false;
+                ShowInTaskbar = false;
+                WindowState = WindowState.Minimized;
+            }
+
             _viewModel = new MainWindowViewModel();
             DataContext = _viewModel;
 
@@ -99,7 +106,6 @@ namespace EchoX
 
                 if (_launchToTrayOnStartup)
                 {
-                    WindowState = WindowState.Minimized;
                     Hide();
                 }
             };
@@ -499,6 +505,9 @@ namespace EchoX
             // Guard: if the window was closed (not just hidden), don't attempt Show
             if (!this.IsLoaded || _isExiting)
                 return;
+
+            if (!ShowInTaskbar)
+                ShowInTaskbar = true;
 
             if (!IsVisible)
                 Show();
