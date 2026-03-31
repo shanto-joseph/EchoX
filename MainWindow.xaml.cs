@@ -488,11 +488,16 @@ namespace EchoX
             if (!this.IsLoaded || _isExiting)
                 return;
 
+            if (!IsVisible)
+                Show();
+
             if (WindowState == WindowState.Minimized)
                 WindowState = WindowState.Normal;
 
-            this.Show();
+            Topmost = true;
+            Topmost = false;
             this.Activate(); // Bring it to the front
+            Focus();
         }
 
         protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
@@ -1205,6 +1210,13 @@ namespace EchoX
 
         private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
+            if ((uint)msg == App.ActivateMessageId)
+            {
+                handled = true;
+                Dispatcher.BeginInvoke(new Action(ShowApp));
+                return IntPtr.Zero;
+            }
+
             if (msg != WM_HOTKEY || _isCapturingGlobal || _isRecordingShortcut || _isExiting)
                 return IntPtr.Zero;
 
