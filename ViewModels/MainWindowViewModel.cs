@@ -51,7 +51,8 @@ namespace EchoX.ViewModels
                         var popup = new EchoX.NotificationPopup(title, message, SettingsViewModel.GetAppSettingsSnapshot());
                         popup.Show();
                     }));
-                    AudioEngine.PlayNotificationSound();
+                    if (!SettingsViewModel.MutePopupSound)
+                        AudioEngine.PlayNotificationSound();
                     break;
 
                 case NotificationType.SoundOnly:

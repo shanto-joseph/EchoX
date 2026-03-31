@@ -570,6 +570,9 @@ namespace EchoX
 
         private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
+            if (e.ChangedButton != MouseButton.Left || e.LeftButton != MouseButtonState.Pressed)
+                return;
+
             if (e.ClickCount == 2)
                 MaximizeBtn_Click(sender, e);
             else
@@ -604,6 +607,7 @@ namespace EchoX
                 "Profiles" => 1,
                 "Shortcuts" => 2,
                 "Settings" => 3,
+                "About" => 4,
                 _ => 0
             };
 
@@ -630,6 +634,11 @@ namespace EchoX
         {
             CloseOutputMixerWindow();
 
+            if (tabIndex == 0 && _viewModel.DevicesViewModel.IsMicTesting)
+            {
+                _viewModel.DevicesViewModel.IsMicTesting = false;
+            }
+
             if (tabIndex == 1)
             {
                 if (_isRecordingShortcut)
@@ -655,7 +664,7 @@ namespace EchoX
 
         private void UpdateActiveNavButton(int activeIndex)
         {
-            var navButtons = new[] { BtnNav0, BtnNav1, BtnNav2, BtnNav3 };
+            var navButtons = new[] { BtnNav0, BtnNav1, BtnNav2, BtnNav3, BtnNav4 };
             var active = (Style)FindResource("NavBtnActive");
             var normal = (Style)FindResource("NavBtn");
 

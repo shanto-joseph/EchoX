@@ -20,6 +20,7 @@ namespace EchoX.ViewModels
         private UpdatePreference _updatePreference = UpdatePreference.NotifyOnly;
         private NotificationType _notificationType = NotificationType.PopupScreen;
         private bool _showMuteIndicator = true;
+        private bool _mutePopupSound;
         private readonly StorageService? _storageService;
 
         public SettingsViewModel(StorageService? storageService = null)
@@ -31,6 +32,7 @@ namespace EchoX.ViewModels
                 var settings = _storageService.LoadAppSettings();
                 _notificationType = settings.NotificationType;
                 _showMuteIndicator = settings.ShowMuteIndicator;
+                _mutePopupSound = settings.MutePopupSound;
             }
 
             _launchWithWindows = GetStartupStatus();
@@ -169,11 +171,22 @@ namespace EchoX.ViewModels
             }
         }
 
+        public bool MutePopupSound
+        {
+            get => _mutePopupSound;
+            set
+            {
+                if (SetProperty(ref _mutePopupSound, value))
+                    SaveSettings();
+            }
+        }
+
         public AppSettings GetAppSettingsSnapshot()
         {
             var settings = _storageService?.LoadAppSettings() ?? new AppSettings();
             settings.NotificationType = _notificationType;
             settings.ShowMuteIndicator = _showMuteIndicator;
+            settings.MutePopupSound = _mutePopupSound;
             settings.OverlayPlacements ??= new List<OverlayPlacement>();
             return settings;
         }
@@ -185,6 +198,7 @@ namespace EchoX.ViewModels
 
             settings.NotificationType = _notificationType;
             settings.ShowMuteIndicator = _showMuteIndicator;
+            settings.MutePopupSound = _mutePopupSound;
             settings.OverlayPlacements ??= new List<OverlayPlacement>();
             _storageService.SaveAppSettings(settings);
         }
@@ -197,6 +211,7 @@ namespace EchoX.ViewModels
             var settings = _storageService.LoadAppSettings();
             settings.NotificationType = _notificationType;
             settings.ShowMuteIndicator = _showMuteIndicator;
+            settings.MutePopupSound = _mutePopupSound;
             settings.OverlayPlacements ??= new List<OverlayPlacement>();
             _storageService.SaveAppSettings(settings);
         }

@@ -7,8 +7,8 @@
         Topmost="True" IsHitTestVisible="False"
         ShowActivated="False"
         WindowStartupLocation="Manual">
-    <Border Background="#E8191B1F"
-            BorderBrush="#2E3238" BorderThickness="1"
+    <Border Background="#99000000"
+            BorderBrush="#33FFFFFF" BorderThickness="1"
             CornerRadius="10">
         <Border.Effect>
             <DropShadowEffect BlurRadius="20" ShadowDepth="0" Color="#000000" Opacity="0.55"/>

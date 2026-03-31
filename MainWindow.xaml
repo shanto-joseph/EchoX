@@ -492,7 +492,6 @@
 
     <Border Background="{StaticResource BgBase}" CornerRadius="0"
             BorderBrush="{StaticResource Border}" BorderThickness="0"
-            MouseLeftButtonDown="TitleBar_MouseLeftButtonDown"
             TextElement.Foreground="{StaticResource TextHi}">
         <Grid>
             <!-- ══════════════════════════════════ MAIN LAYOUT -->
@@ -594,6 +593,14 @@
                             <TextBlock Text="&#xE713;" FontFamily="Segoe MDL2 Assets" FontSize="13" Margin="0,0,10,0"
                                        Foreground="{StaticResource TextMid}"/>
                             <TextBlock Text="Settings" FontSize="13" Foreground="{StaticResource TextMid}"/>
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="BtnNav4" Tag="About" Click="SidebarButton_Click"
+                            Style="{StaticResource NavBtn}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE946;" FontFamily="Segoe MDL2 Assets" FontSize="13" Margin="0,0,10,0"
+                                       Foreground="{StaticResource TextMid}"/>
+                            <TextBlock Text="About" FontSize="13" Foreground="{StaticResource TextMid}"/>
                         </StackPanel>
                     </Button>
                 </StackPanel>
@@ -1934,19 +1941,19 @@
                                FontSize="10" FontWeight="SemiBold" Margin="0,0,0,8"/>
 
                     <Border Style="{StaticResource Card}" Padding="0" Margin="0,0,0,20">
-                        <StackPanel>
+                        <StackPanel Grid.IsSharedSizeScope="True">
 
                             <!-- Open App row -->
                             <Border Padding="18,14" BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="KeybindIconCol"/>
                                         <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="0"/>
-                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="KeybindToggleCol"/>
+                                        <ColumnDefinition Width="10"/>
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="KeybindShortcutCol"/>
                                         <ColumnDefinition Width="6"/>
-                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="KeybindResetCol"/>
                                     </Grid.ColumnDefinitions>
                                     <Border Grid.Column="0" Width="36" Height="36" Margin="0,0,14,0">
                                         <TextBlock Text="&#xE7B5;" FontFamily="Segoe MDL2 Assets"
@@ -1958,7 +1965,7 @@
                                         <TextBlock Text="Show the EchoX window from anywhere" Foreground="{StaticResource TextMid}" FontSize="12"/>
                                     </StackPanel>
                                     <!-- Toggle -->
-                                    <CheckBox Grid.Column="2" VerticalAlignment="Center" Margin="0,0,10,0"
+                                    <CheckBox Grid.Column="2" VerticalAlignment="Center"
                                               IsChecked="{Binding KeyBindsViewModel.IsOpenAppEnabled}"
                                               Style="{StaticResource ToggleSwitch}"/>
                                     <!-- Key badge -->
@@ -2029,13 +2036,13 @@
                             <Border Padding="18,14" BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="KeybindIconCol"/>
                                         <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="0"/>
-                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="KeybindToggleCol"/>
+                                        <ColumnDefinition Width="10"/>
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="KeybindShortcutCol"/>
                                         <ColumnDefinition Width="6"/>
-                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="KeybindResetCol"/>
                                     </Grid.ColumnDefinitions>
                                     <Border Grid.Column="0" Width="36" Height="36" Margin="0,0,14,0">
                                         <TextBlock Text="&#xE81E;" FontFamily="Segoe MDL2 Assets"
@@ -2046,7 +2053,7 @@
                                         <TextBlock Text="Cycle Profiles" Foreground="{StaticResource TextHi}" FontSize="13" FontWeight="SemiBold"/>
                                         <TextBlock Text="Switch to the next saved audio profile" Foreground="{StaticResource TextMid}" FontSize="12"/>
                                     </StackPanel>
-                                    <CheckBox Grid.Column="2" VerticalAlignment="Center" Margin="0,0,10,0"
+                                    <CheckBox Grid.Column="2" VerticalAlignment="Center"
                                               IsChecked="{Binding KeyBindsViewModel.IsCycleEnabled}"
                                               Style="{StaticResource ToggleSwitch}"/>
                                     <Button Grid.Column="4" x:Name="CycleCaptureBtn" Cursor="Hand" VerticalAlignment="Center"
@@ -2115,13 +2122,13 @@
                             <Border Padding="18,14" BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="KeybindIconCol"/>
                                         <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="0"/>
-                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="KeybindToggleCol"/>
+                                        <ColumnDefinition Width="10"/>
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="KeybindShortcutCol"/>
                                         <ColumnDefinition Width="6"/>
-                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="KeybindResetCol"/>
                                     </Grid.ColumnDefinitions>
                                     <Border Grid.Column="0" Width="36" Height="36" Margin="0,0,14,0">
                                         <TextBlock Text="&#xE720;" FontFamily="Segoe MDL2 Assets"
@@ -2132,7 +2139,7 @@
                                         <TextBlock Text="Toggle Mic Mute" Foreground="{StaticResource TextHi}" FontSize="13" FontWeight="SemiBold"/>
                                         <TextBlock Text="Mute or unmute the default microphone" Foreground="{StaticResource TextMid}" FontSize="12"/>
                                     </StackPanel>
-                                    <CheckBox Grid.Column="2" VerticalAlignment="Center" Margin="0,0,10,0"
+                                    <CheckBox Grid.Column="2" VerticalAlignment="Center"
                                               IsChecked="{Binding KeyBindsViewModel.IsMuteEnabled}"
                                               Style="{StaticResource ToggleSwitch}"/>
                                     <Button Grid.Column="4" x:Name="MuteCaptureBtn" Cursor="Hand" VerticalAlignment="Center"
@@ -2461,25 +2468,75 @@
                         <!-- Popup -->
                         <CheckBox IsChecked="{Binding SettingsViewModel.NotifyPopupScreen}"
                                   Command="{Binding SettingsViewModel.SetNotifyPopupCommand}"
-                                  Width="100" Height="90" Margin="0,0,8,0" Cursor="Hand" Focusable="False">
+                                  Width="100" Height="108" Margin="0,0,8,0" Cursor="Hand" Focusable="False">
                             <CheckBox.Template>
                                 <ControlTemplate TargetType="CheckBox">
                                     <Border x:Name="Card" CornerRadius="10" BorderThickness="1"
                                             Background="{StaticResource BgCard}" BorderBrush="{StaticResource Border}">
-                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <TextBlock x:Name="Ico" Text="&#xE8BD;" FontFamily="Segoe MDL2 Assets"
-                                                       Foreground="{StaticResource TextLow}" FontSize="20"
-                                                       HorizontalAlignment="Center" Margin="0,0,0,6"/>
-                                            <TextBlock x:Name="Lbl" Text="Popup" FontSize="11" FontWeight="SemiBold"
-                                                       Foreground="{StaticResource TextMid}" HorizontalAlignment="Center"/>
-                                            <TextBlock Text="Overlay" FontSize="9" Foreground="{StaticResource TextLow}"
-                                                       HorizontalAlignment="Center" Margin="0,2,0,0"/>
-                                        </StackPanel>
+                                        <Grid Margin="0,10,0,8">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="*"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+                                            <StackPanel Grid.Row="0" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                <TextBlock x:Name="Ico" Text="&#xE8BD;" FontFamily="Segoe MDL2 Assets"
+                                                           Foreground="{StaticResource TextLow}" FontSize="20"
+                                                           HorizontalAlignment="Center" Margin="0,0,0,6"/>
+                                                <TextBlock x:Name="Lbl" Text="Popup" FontSize="11" FontWeight="SemiBold"
+                                                           Foreground="{StaticResource TextMid}" HorizontalAlignment="Center"/>
+                                                <TextBlock Text="Overlay" FontSize="9" Foreground="{StaticResource TextLow}"
+                                                           HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                            <CheckBox x:Name="PopupMuteToggle"
+                                                      Grid.Row="1"
+                                                      IsChecked="{Binding DataContext.SettingsViewModel.MutePopupSound, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                      Cursor="Hand"
+                                                      Focusable="False"
+                                                      HorizontalAlignment="Center"
+                                                      Visibility="Hidden"
+                                                      ToolTip="Mute popup notification sound">
+                                                <CheckBox.Template>
+                                                    <ControlTemplate TargetType="CheckBox">
+                                                        <Border x:Name="MuteChip"
+                                                                Padding="8,4"
+                                                                CornerRadius="7"
+                                                                BorderThickness="1"
+                                                                Background="#12000000"
+                                                                BorderBrush="{StaticResource Border}">
+                                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                                <TextBlock x:Name="MuteMark"
+                                                                           Text="&#xE73E;"
+                                                                           FontFamily="Segoe MDL2 Assets"
+                                                                           FontSize="9"
+                                                                           Foreground="{StaticResource TextLow}"
+                                                                           Margin="0,0,4,0"
+                                                                           VerticalAlignment="Center"/>
+                                                                <TextBlock x:Name="MuteLabel"
+                                                                           Text="Mute"
+                                                                           FontSize="9"
+                                                                           FontWeight="SemiBold"
+                                                                           Foreground="{StaticResource TextMid}"
+                                                                           VerticalAlignment="Center"/>
+                                                            </StackPanel>
+                                                        </Border>
+                                                        <ControlTemplate.Triggers>
+                                                            <Trigger Property="IsChecked" Value="True">
+                                                                <Setter TargetName="MuteChip" Property="BorderBrush" Value="{StaticResource Accent}"/>
+                                                                <Setter TargetName="MuteChip" Property="Background" Value="#1A53C028"/>
+                                                                <Setter TargetName="MuteMark" Property="Foreground" Value="{StaticResource Accent}"/>
+                                                                <Setter TargetName="MuteLabel" Property="Foreground" Value="{StaticResource Accent}"/>
+                                                            </Trigger>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </CheckBox.Template>
+                                            </CheckBox>
+                                        </Grid>
                                     </Border>
                                     <ControlTemplate.Triggers>
                                         <Trigger Property="IsChecked" Value="True">
                                             <Setter TargetName="Ico" Property="Foreground" Value="{StaticResource Accent}"/>
                                             <Setter TargetName="Lbl" Property="Foreground" Value="{StaticResource Accent}"/>
+                                            <Setter TargetName="PopupMuteToggle" Property="Visibility" Value="Visible"/>
                                         </Trigger>
                                     </ControlTemplate.Triggers>
                                 </ControlTemplate>
@@ -2489,7 +2546,7 @@
                         <!-- Sound -->
                         <CheckBox IsChecked="{Binding SettingsViewModel.NotifySoundOnly}"
                                   Command="{Binding SettingsViewModel.SetNotifySoundCommand}"
-                                  Width="100" Height="90" Margin="0,0,8,0" Cursor="Hand" Focusable="False">
+                                  Width="100" Height="108" Margin="0,0,8,0" Cursor="Hand" Focusable="False">
                             <CheckBox.Template>
                                 <ControlTemplate TargetType="CheckBox">
                                     <Border x:Name="Card" CornerRadius="10" BorderThickness="1"
@@ -2517,7 +2574,7 @@
                         <!-- Windows -->
                         <CheckBox IsChecked="{Binding SettingsViewModel.NotifyWindows}"
                                   Command="{Binding SettingsViewModel.SetNotifyWindowsCommand}"
-                                  Width="100" Height="90" Margin="0,0,8,0" Cursor="Hand" Focusable="False">
+                                  Width="100" Height="108" Margin="0,0,8,0" Cursor="Hand" Focusable="False">
                             <CheckBox.Template>
                                 <ControlTemplate TargetType="CheckBox">
                                     <Border x:Name="Card" CornerRadius="10" BorderThickness="1"
@@ -2545,7 +2602,7 @@
                         <!-- None -->
                         <CheckBox IsChecked="{Binding SettingsViewModel.NotifyNone}"
                                   Command="{Binding SettingsViewModel.SetNotifyNoneCommand}"
-                                  Width="100" Height="90" Cursor="Hand" Focusable="False">
+                                  Width="100" Height="108" Cursor="Hand" Focusable="False">
                             <CheckBox.Template>
                                 <ControlTemplate TargetType="CheckBox">
                                     <Border x:Name="Card" CornerRadius="10" BorderThickness="1"
@@ -2725,6 +2782,13 @@
             </Grid>
 
             <!-- Window controls — float top-right over everything -->
+            <Border HorizontalAlignment="Stretch"
+                    VerticalAlignment="Top"
+                    Height="46"
+                    Margin="196,0,190,0"
+                    Background="Transparent"
+                    Panel.ZIndex="98"
+                    MouseLeftButtonDown="TitleBar_MouseLeftButtonDown"/>
             <StackPanel HorizontalAlignment="Right" VerticalAlignment="Top"
                         Orientation="Horizontal" Margin="0,8,10,0" Panel.ZIndex="99">
                 <Button Command="{Binding AboutViewModel.CheckForUpdateCommand}"
