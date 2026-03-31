@@ -34,8 +34,10 @@ public partial class App : System.Windows.Application
         }
 
         base.OnStartup(e);
+        System.Windows.Input.Mouse.OverrideCursor = System.Windows.Input.Cursors.Wait;
         DispatcherUnhandledException += (s, ex) =>
         {
+            System.Windows.Input.Mouse.OverrideCursor = null;
             System.IO.File.WriteAllText("crash.log", ex.Exception.ToString());
             System.Windows.MessageBox.Show(ex.Exception.Message, "EchoX Error");
             ex.Handled = true;
@@ -52,6 +54,7 @@ public partial class App : System.Windows.Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        System.Windows.Input.Mouse.OverrideCursor = null;
         _singleInstanceMutex?.ReleaseMutex();
         _singleInstanceMutex?.Dispose();
         _singleInstanceMutex = null;
