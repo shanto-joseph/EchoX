@@ -56,6 +56,7 @@ namespace EchoX
         public MainWindow(bool launchToTrayOnStartup)
         {
             InitializeComponent();
+            ContentRendered += (_, _) => Mouse.OverrideCursor = null;
             _launchToTrayOnStartup = launchToTrayOnStartup;
             if (_launchToTrayOnStartup)
             {

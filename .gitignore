@@ -23,3 +23,5 @@ _ReSharper*/
 .idea/
 .vscode/
 razer.md
+dist
+installer/
