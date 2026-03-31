@@ -396,7 +396,7 @@ namespace EchoX.Services
                     // Match by first 15 chars to account for NAudio's truncation (31 char limit)
                     string searchName = caps.ProductName.Trim();
                     
-                    // Discord and Windows often append " (Microphone)" or similar, so check if names overlap significantly
+                    //  Windows often append " (Microphone)" or similar, so check if names overlap significantly
                     if (!string.IsNullOrEmpty(deviceName) && 
                         (deviceName.Contains(searchName) || searchName.Contains(deviceName.Substring(0, Math.Min(deviceName.Length, 15)))))
                     {

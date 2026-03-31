@@ -8,7 +8,7 @@ namespace EchoX
 {
     public partial class AboutWindow : Window
     {
-        private const string BuyMeCoffeeUrl = "https://buymeacoffee.com/shantojoseph";
+        private const string BuyMeCoffeeUrl = "https://coffee.shantojoseph.com/";
 
         public AboutWindow(AboutViewModel aboutViewModel)
         {

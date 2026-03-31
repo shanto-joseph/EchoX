@@ -12,11 +12,13 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using System.Windows.Input;
+using System.Diagnostics;
 
 namespace EchoX
 {
     public partial class MainWindow : Window
     {
+        private const string SupportUrl = "https://coffee.shantojoseph.com/";
         // DWM rounded corners
         [DllImport("dwmapi.dll")]
         private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
@@ -176,6 +178,7 @@ namespace EchoX
                 await _viewModel.AboutViewModel.CheckForUpdatesAsync(false);
             });
             var aboutItem = CreateTrayMenuItem("About", OpenAboutWindow);
+            var supportItem = CreateTrayMenuItem("Support EchoX", OpenSupportPage);
             var exitItem = CreateTrayMenuItem("Quit EchoX", CloseApp);
             exitItem.Tag = "Danger";
 
@@ -184,6 +187,7 @@ namespace EchoX
             menu.Items.Add(mixerItem);
             menu.Items.Add(updateItem);
             menu.Items.Add(aboutItem);
+            menu.Items.Add(supportItem);
             menu.Items.Add(CreateTraySeparator());
             menu.Items.Add(exitItem);
 
@@ -589,6 +593,17 @@ namespace EchoX
             }));
         }
 
+        private void OpenSupportPage()
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo(SupportUrl) { UseShellExecute = true });
+            }
+            catch
+            {
+            }
+        }
+
         private void AboutSeeMoreBtn_Click(object sender, RoutedEventArgs e)
         {
             OpenAboutWindow();
@@ -726,31 +741,10 @@ namespace EchoX
         }
         private void CheckStartupStatus()
         {
-            // TODO: Move to SettingsViewModel
-            // using RegistryKey key = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", false);
-            // bool hasStartup = key?.GetValue("EchoX") != null;
-            // StartupCheckbox.IsChecked = hasStartup;
-            // StartupStatusText.Text = hasStartup ? "Startup: Enabled" : "Startup: Disabled";
-            // StartupStatusText.Foreground = hasStartup ? System.Windows.Media.Brushes.LightGreen : System.Windows.Media.Brushes.Gray;
         }
 
         private void StartupCheckbox_Click(object sender, RoutedEventArgs e)
         {
-            // string appPath = System.Reflection.Assembly.GetExecutingAssembly().Location;
-            // using RegistryKey key = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", true);
-
-            // bool enabled = StartupCheckbox.IsChecked == true;
-            // if (enabled)
-            // {
-            //     key?.SetValue("EchoX", appPath); // Add it to Windows Startup
-            // }
-            // else
-            // {
-            //     key?.DeleteValue("EchoX", false); // Remove it from Windows Startup
-            // }
-
-            // StartupStatusText.Text = enabled ? "Startup: Enabled" : "Startup: Disabled";
-            // StartupStatusText.Foreground = enabled ? System.Windows.Media.Brushes.LightGreen : System.Windows.Media.Brushes.Gray;
         }
 
         private void VolumeSlider_PreviewMouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)

@@ -150,7 +150,7 @@
                                    Foreground="#EDEDF0"
                                    FontSize="12"
                                    FontWeight="SemiBold"/>
-                        <TextBlock Text="Drag me like Discord"
+                        <TextBlock Text="Drag me "
                                    Foreground="#8A9199"
                                    FontSize="11"
                                    Margin="0,2,0,0"/>
