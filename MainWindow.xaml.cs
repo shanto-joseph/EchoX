@@ -39,6 +39,7 @@ namespace EchoX
         private readonly HashSet<int> _capturedGestureKeyVks = new HashSet<int>();
         private readonly HashSet<int> _recordedProfileKeyVks = new HashSet<int>();
         private readonly HashSet<string> _registeredNativeGestures = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        private readonly bool _launchToTrayOnStartup;
         private string? _lastTriggeredGesture;
 
         [DllImport("user32.dll", CharSet = CharSet.Auto)]
@@ -46,9 +47,14 @@ namespace EchoX
         [DllImport("user32.dll")]
         private static extern short GetKeyState(int nVirtKey);
 
-        public MainWindow()
+        public MainWindow() : this(false)
+        {
+        }
+
+        public MainWindow(bool launchToTrayOnStartup)
         {
             InitializeComponent();
+            _launchToTrayOnStartup = launchToTrayOnStartup;
             _viewModel = new MainWindowViewModel();
             DataContext = _viewModel;
 
@@ -90,6 +96,12 @@ namespace EchoX
                 _globalHotkeyProc = GlobalHotkeyHookCallback;
                 _globalHotkeyHook = SetWindowsHookEx(WH_KEYBOARD_LL, _globalHotkeyProc, GetModuleHandle(mod.ModuleName!), 0);
                 RegisterNativeHotkeys();
+
+                if (_launchToTrayOnStartup)
+                {
+                    WindowState = WindowState.Minimized;
+                    Hide();
+                }
             };
         }
 
@@ -792,7 +804,7 @@ namespace EchoX
         {
             if (_appVolumeMixerWindow != null && _appVolumeMixerWindow.IsLoaded)
             {
-                _appVolumeMixerWindow.Activate();
+                _appVolumeMixerWindow.BringToFront();
                 return;
             }
 
@@ -809,7 +821,7 @@ namespace EchoX
             };
 
             _appVolumeMixerWindow.Show();
-            _appVolumeMixerWindow.Activate();
+            _appVolumeMixerWindow.BringToFront();
         }
 
         private void CloseOutputMixerWindow()
@@ -861,6 +873,7 @@ namespace EchoX
         private const int HotkeyIdOpenApp = 0x4501;
         private const int HotkeyIdCycle = 0x4502;
         private const int HotkeyIdMute = 0x4503;
+        private const int HotkeyIdMixer = 0x4504;
 
         private LowLevelHookProc? _kbProc, _mouseProc;
 
@@ -1141,6 +1154,7 @@ namespace EchoX
             TryRegisterNativeHotkey(HotkeyIdOpenApp, _viewModel.KeyBindsViewModel.IsOpenAppEnabled, _viewModel.KeyBindsViewModel.OpenAppGesture);
             TryRegisterNativeHotkey(HotkeyIdCycle, _viewModel.KeyBindsViewModel.IsCycleEnabled, _viewModel.KeyBindsViewModel.CycleGesture);
             TryRegisterNativeHotkey(HotkeyIdMute, _viewModel.KeyBindsViewModel.IsMuteEnabled, _viewModel.KeyBindsViewModel.MuteGesture);
+            TryRegisterNativeHotkey(HotkeyIdMixer, _viewModel.KeyBindsViewModel.IsMixerEnabled, _viewModel.KeyBindsViewModel.MixerGesture);
         }
 
         private void UnregisterNativeHotkeys()
@@ -1150,6 +1164,7 @@ namespace EchoX
                 UnregisterHotKey(_windowHandle, HotkeyIdOpenApp);
                 UnregisterHotKey(_windowHandle, HotkeyIdCycle);
                 UnregisterHotKey(_windowHandle, HotkeyIdMute);
+                UnregisterHotKey(_windowHandle, HotkeyIdMixer);
             }
 
             _registeredNativeGestures.Clear();
@@ -1225,6 +1240,7 @@ namespace EchoX
                 HotkeyIdOpenApp => OpenApp,
                 HotkeyIdCycle => CycleProfiles,
                 HotkeyIdMute => ToggleMicMute,
+                HotkeyIdMixer => OpenMixerPopup,
                 _ => null
             };
 
@@ -1355,6 +1371,8 @@ namespace EchoX
                 return CycleProfiles;
             if (kb.IsMuteEnabled && string.Equals(kb.MuteGesture, gesture, StringComparison.OrdinalIgnoreCase))
                 return ToggleMicMute;
+            if (kb.IsMixerEnabled && string.Equals(kb.MixerGesture, gesture, StringComparison.OrdinalIgnoreCase))
+                return OpenMixerPopup;
             return null;
         }
 
@@ -1558,6 +1576,8 @@ namespace EchoX
                 return "\"Cycle Profiles\"";
             if (MatchesGlobal("Toggle Mic Mute", kb.MuteGesture, kb.MuteMouseButton))
                 return "\"Toggle Mic Mute\"";
+            if (MatchesGlobal("Volume Mixer", kb.MixerGesture, null))
+                return "\"Volume Mixer\"";
 
             var profileConflict = _viewModel.ProfilesViewModel.GetShortcutConflict(normalizedGesture, mouseButton, excludeProfileId);
             if (!string.IsNullOrWhiteSpace(profileConflict))

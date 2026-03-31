@@ -10,7 +10,8 @@
         ShowInTaskbar="False"
         AllowsTransparency="False"
         Background="#111416"
-        WindowStartupLocation="Manual">
+        WindowStartupLocation="Manual"
+        PreviewKeyDown="Window_PreviewKeyDown">
     <shell:WindowChrome.WindowChrome>
         <shell:WindowChrome CaptionHeight="0"
                             ResizeBorderThickness="0"
@@ -95,15 +96,15 @@
             <Border Grid.Row="0"
                     Padding="16,14"
                     BorderBrush="#2E3238"
-                    BorderThickness="0,0,0,1"
-                    Cursor="SizeAll"
-                    MouseLeftButtonDown="Header_MouseLeftButtonDown">
+                    BorderThickness="0,0,0,1">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <StackPanel>
+                    <StackPanel Grid.Column="0"
+                                Cursor="SizeAll"
+                                MouseLeftButtonDown="Header_MouseLeftButtonDown">
                         <TextBlock Text="Per-App Volume"
                                    Foreground="#EDEDF0"
                                    FontSize="14"
@@ -115,29 +116,37 @@
                                    TextTrimming="CharacterEllipsis"/>
                     </StackPanel>
                     <Button Grid.Column="1"
-                            Width="28"
-                            Height="28"
                             Click="CloseBtn_Click"
                             Background="Transparent"
                             BorderThickness="0"
-                            Cursor="Hand">
-                        <Button.Template>
-                            <ControlTemplate TargetType="Button">
-                                <Border x:Name="Bg" Background="Transparent" CornerRadius="8">
-                                    <TextBlock Text="&#xE711;"
-                                               FontFamily="Segoe MDL2 Assets"
-                                               FontSize="12"
-                                               Foreground="#8A9199"
-                                               HorizontalAlignment="Center"
-                                               VerticalAlignment="Center"/>
-                                </Border>
-                                <ControlTemplate.Triggers>
+                            Cursor="Hand"
+                            Padding="0"
+                            Margin="12,0,0,0"
+                            VerticalAlignment="Top">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Foreground" Value="#8A9199"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <ContentPresenter HorizontalAlignment="Center"
+                                                              VerticalAlignment="Center"
+                                                              RecognizesAccessKey="True"/>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                                <Style.Triggers>
                                     <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter TargetName="Bg" Property="Background" Value="#24272C"/>
+                                        <Setter Property="Foreground" Value="#EDEDF0"/>
                                     </Trigger>
-                                </ControlTemplate.Triggers>
-                            </ControlTemplate>
-                        </Button.Template>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                        <TextBlock Text="ESC"
+                                   Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                   FontSize="12"
+                                   FontFamily="Consolas"
+                                   FontWeight="SemiBold"/>
                     </Button>
                 </Grid>
             </Border>
@@ -284,7 +293,8 @@
                                                     <ToggleButton.Template>
                                                         <ControlTemplate TargetType="ToggleButton">
                                                             <Border x:Name="Bg" Background="Transparent" CornerRadius="9">
-                                                                <TextBlock Text="{Binding MuteGlyph}"
+                                                                <TextBlock x:Name="MuteIcon"
+                                                                           Text="{Binding MuteGlyph}"
                                                                            FontFamily="Segoe MDL2 Assets"
                                                                            FontSize="13"
                                                                            Foreground="#8A9199"
@@ -293,10 +303,10 @@
                                                             </Border>
                                                             <ControlTemplate.Triggers>
                                                                 <Trigger Property="IsMouseOver" Value="True">
-                                                                    <Setter TargetName="Bg" Property="Background" Value="#24272C"/>
+                                                                    <Setter TargetName="MuteIcon" Property="Foreground" Value="#EDEDF0"/>
                                                                 </Trigger>
                                                                 <Trigger Property="IsChecked" Value="True">
-                                                                    <Setter TargetName="Bg" Property="Background" Value="#3F1515"/>
+                                                                    <Setter TargetName="MuteIcon" Property="Foreground" Value="#E96C6C"/>
                                                                 </Trigger>
                                                             </ControlTemplate.Triggers>
                                                         </ControlTemplate>
