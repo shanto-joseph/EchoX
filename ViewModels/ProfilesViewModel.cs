@@ -692,6 +692,7 @@ namespace EchoX.ViewModels
             string? gesture,
             string? mouseButton)
         {
+            ShortcutWarning = null;
             profile.ShortcutGesture     = string.IsNullOrWhiteSpace(gesture) ? null : KeyBindsViewModel.NormalizeGesture(gesture!);
             profile.ShortcutMouseButton = mouseButton;
             ApplyLegacyShortcutFields(profile);
@@ -715,6 +716,7 @@ namespace EchoX.ViewModels
         /// <summary>Clears the shortcut for a profile (called from Key Binds clear button).</summary>
         public void ClearProfileShortcut(AudioProfile profile)
         {
+            ShortcutWarning = null;
             UnregisterProfileHotkey(profile);
             profile.ShortcutKey         = null;
             profile.ShortcutModifiers   = null;
