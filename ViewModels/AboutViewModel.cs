@@ -1,5 +1,7 @@
 using System;
 using System.Diagnostics;
+using System.IO;
+using System.Linq;
 using System.Net;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -12,6 +14,7 @@ namespace EchoX.ViewModels
     public class AboutViewModel : ViewModelBase
     {
         private const string LatestReleaseApiUrl = "https://api.github.com/repos/shanto-joseph/EchoX/releases/latest";
+        private const string InstallerAssetNamePrefix = "EchoX-Setup-";
 
         public string AppVersion =>
             Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0.0";
@@ -51,7 +54,10 @@ namespace EchoX.ViewModels
             private set
             {
                 if (SetProperty(ref _isCheckingForUpdates, value))
+                {
+                    NotifyTopUpdateUiStateChanged();
                     CommandManager.InvalidateRequerySuggested();
+                }
             }
         }
 
@@ -59,7 +65,13 @@ namespace EchoX.ViewModels
         public bool IsUpdateAvailable
         {
             get => _isUpdateAvailable;
-            private set => SetProperty(ref _isUpdateAvailable, value);
+            private set
+            {
+                if (SetProperty(ref _isUpdateAvailable, value))
+                {
+                    NotifyTopUpdateUiStateChanged();
+                }
+            }
         }
 
         private string? _latestVersion;
@@ -76,7 +88,79 @@ namespace EchoX.ViewModels
             private set => SetProperty(ref _releaseUrl, value);
         }
 
+        private string? _downloadUrl;
+        private string? _downloadFileName;
+        private string? _downloadedInstallerPath;
+
+        private bool _isDownloadingUpdate;
+        public bool IsDownloadingUpdate
+        {
+            get => _isDownloadingUpdate;
+            private set
+            {
+                if (SetProperty(ref _isDownloadingUpdate, value))
+                {
+                    NotifyTopUpdateUiStateChanged();
+                    CommandManager.InvalidateRequerySuggested();
+                }
+            }
+        }
+
+        private int _downloadProgressPercentage;
+        public int DownloadProgressPercentage
+        {
+            get => _downloadProgressPercentage;
+            private set => SetProperty(ref _downloadProgressPercentage, value);
+        }
+
+        private bool _isUpdateDownloaded;
+        public bool IsUpdateDownloaded
+        {
+            get => _isUpdateDownloaded;
+            private set
+            {
+                if (SetProperty(ref _isUpdateDownloaded, value))
+                {
+                    NotifyTopUpdateUiStateChanged();
+                    CommandManager.InvalidateRequerySuggested();
+                }
+            }
+        }
+
+        private bool _isInstallingUpdate;
+        public bool IsInstallingUpdate
+        {
+            get => _isInstallingUpdate;
+            private set
+            {
+                if (SetProperty(ref _isInstallingUpdate, value))
+                {
+                    NotifyTopUpdateUiStateChanged();
+                    CommandManager.InvalidateRequerySuggested();
+                }
+            }
+        }
+
+        private bool _isTopUpdateActionVisible;
+        public bool IsTopUpdateActionVisible
+        {
+            get => _isTopUpdateActionVisible;
+            private set
+            {
+                if (SetProperty(ref _isTopUpdateActionVisible, value))
+                    NotifyTopUpdateUiStateChanged();
+            }
+        }
+
         public ICommand CheckForUpdateCommand { get; }
+        public ICommand RevealTopUpdateActionCommand { get; }
+        public bool IsUpdateActionAvailable => IsUpdateAvailable || IsUpdateDownloaded;
+        public bool ShowTopUpdateStatus => IsCheckingForUpdates || IsDownloadingUpdate || IsInstallingUpdate || IsUpdateAvailable || IsUpdateDownloaded;
+        public bool ShowTopUpdateStatusPill => ShowTopUpdateStatus && !IsDownloadingUpdate && !IsUpdateDownloaded && !IsTopUpdateActionVisible;
+        public bool ShowTopUpdateProgress => IsDownloadingUpdate;
+        public bool ShowTopUpdateActionButton => (IsTopUpdateActionVisible && IsUpdateAvailable) || IsUpdateDownloaded;
+        public bool IsTopUpdateClickable => IsUpdateAvailable;
+        public string TopUpdateButtonText => IsUpdateDownloaded ? "Install" : "Update";
 
         private readonly StorageService? _storageService;
 
@@ -88,12 +172,24 @@ namespace EchoX.ViewModels
                 _lastChecked = _storageService.LoadAppSettings().LastUpdateChecked;
 
             UpdateStatusDetail = _lastChecked == "Never"
-                ? "Checks GitHub Releases for the latest EchoX build."
+                ? "Checks GitHub Releases."
                 : $"Last checked: {_lastChecked}";
 
             CheckForUpdateCommand = new RelayCommand(
                 () =>
                 {
+                    if (IsUpdateDownloaded && !string.IsNullOrWhiteSpace(_downloadedInstallerPath))
+                    {
+                        InstallDownloadedUpdate();
+                        return;
+                    }
+
+                    if (IsUpdateAvailable && !string.IsNullOrWhiteSpace(_downloadUrl))
+                    {
+                        _ = DownloadUpdateAsync();
+                        return;
+                    }
+
                     if (IsUpdateAvailable && !string.IsNullOrWhiteSpace(ReleaseUrl))
                     {
                         OpenReleasePage();
@@ -102,7 +198,11 @@ namespace EchoX.ViewModels
 
                     _ = CheckForUpdatesAsync(false);
                 },
-                () => !IsCheckingForUpdates);
+                () => !IsCheckingForUpdates && !IsDownloadingUpdate && !IsInstallingUpdate);
+
+            RevealTopUpdateActionCommand = new RelayCommand(
+                () => IsTopUpdateActionVisible = IsUpdateAvailable,
+                () => IsUpdateAvailable && !IsDownloadingUpdate && !IsInstallingUpdate && !IsUpdateDownloaded);
         }
 
         public Task CheckForUpdatesAsync(bool silent)
@@ -115,9 +215,13 @@ namespace EchoX.ViewModels
             try
             {
                 IsCheckingForUpdates = true;
+                IsTopUpdateActionVisible = false;
                 UpdateStatusText = "Checking...";
                 UpdateActionText = "Checking...";
-                UpdateStatusDetail = "Looking for the latest EchoX release...";
+                UpdateStatusDetail = "Checking GitHub release...";
+                IsUpdateDownloaded = false;
+                DownloadProgressPercentage = 0;
+                _downloadedInstallerPath = null;
 
                 var payload = await DownloadLatestReleasePayloadAsync().ConfigureAwait(true);
                 var json = JObject.Parse(payload);
@@ -125,35 +229,151 @@ namespace EchoX.ViewModels
                 var latestTag = (json["tag_name"]?.ToString() ?? string.Empty).Trim();
                 var latestVersion = NormalizeVersionLabel(latestTag);
                 var htmlUrl = json["html_url"]?.ToString();
+                var asset = FindInstallerAsset(json);
 
                 ReleaseUrl = htmlUrl;
                 LatestVersion = latestVersion;
+                _downloadUrl = asset?.BrowserDownloadUrl;
+                _downloadFileName = asset?.Name;
                 StampLastChecked();
 
                 if (TryParseVersion(latestVersion, out var latest) && TryParseVersion(AppVersion, out var current) && latest > current)
                 {
                     IsUpdateAvailable = true;
-                    UpdateStatusText = $"Update available";
-                    UpdateActionText = "Download";
-                    UpdateStatusDetail = $"v{latestVersion} is available. Click to open the release page.";
+                    UpdateStatusText = "Update available";
+                    UpdateActionText = !string.IsNullOrWhiteSpace(_downloadUrl) ? "Download" : "Open release";
+                    UpdateStatusDetail = !string.IsNullOrWhiteSpace(_downloadUrl)
+                        ? $"Update ready: v{latestVersion}"
+                        : $"Update ready: v{latestVersion}. Open release page.";
                     return;
                 }
 
                 IsUpdateAvailable = false;
                 UpdateStatusText = "Up to date";
                 UpdateActionText = "Check now";
-                UpdateStatusDetail = $"You're on the latest version{(string.IsNullOrWhiteSpace(latestVersion) ? string.Empty : $" (v{latestVersion})")}.";
+                UpdateStatusDetail = string.IsNullOrWhiteSpace(latestVersion)
+                    ? "You are up to date."
+                    : $"Up to date: v{latestVersion}";
             }
             catch
             {
                 IsUpdateAvailable = false;
                 UpdateStatusText = silent ? "Updates unavailable" : "Check failed";
                 UpdateActionText = "Try again";
-                UpdateStatusDetail = "EchoX couldn't reach the update server right now.";
+                UpdateStatusDetail = "Could not reach GitHub.";
             }
             finally
             {
                 IsCheckingForUpdates = false;
+                CommandManager.InvalidateRequerySuggested();
+            }
+        }
+
+        private async Task DownloadUpdateAsync()
+        {
+            if (string.IsNullOrWhiteSpace(_downloadUrl) || string.IsNullOrWhiteSpace(_downloadFileName))
+            {
+                OpenReleasePage();
+                return;
+            }
+
+            try
+            {
+                IsDownloadingUpdate = true;
+                IsTopUpdateActionVisible = false;
+                DownloadProgressPercentage = 0;
+                UpdateStatusText = "Downloading...";
+                UpdateActionText = "Downloading...";
+                UpdateStatusDetail = "Starting download...";
+
+                var updatesFolder = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "EchoX",
+                    "Updates");
+
+                Directory.CreateDirectory(updatesFolder);
+
+                var destinationPath = Path.Combine(updatesFolder, _downloadFileName);
+                var tempPath = destinationPath + ".download";
+
+                if (File.Exists(tempPath))
+                    File.Delete(tempPath);
+
+                using var client = CreateDownloadClient();
+                client.DownloadProgressChanged += (_, args) =>
+                {
+                    DownloadProgressPercentage = args.ProgressPercentage;
+                    UpdateStatusDetail = $"Downloading... {args.ProgressPercentage}%";
+                };
+
+                await client.DownloadFileTaskAsync(new Uri(_downloadUrl), tempPath).ConfigureAwait(true);
+
+                if (File.Exists(destinationPath))
+                    File.Delete(destinationPath);
+
+                File.Move(tempPath, destinationPath);
+                _downloadedInstallerPath = destinationPath;
+                IsUpdateDownloaded = true;
+                DownloadProgressPercentage = 100;
+                UpdateStatusText = "Ready to install";
+                UpdateActionText = "Install";
+                UpdateStatusDetail = "Download complete. Install ready.";
+            }
+            catch
+            {
+                IsUpdateDownloaded = false;
+                IsTopUpdateActionVisible = false;
+                DownloadProgressPercentage = 0;
+                _downloadedInstallerPath = null;
+                UpdateStatusText = "Download failed";
+                UpdateActionText = "Try again";
+                UpdateStatusDetail = "Download failed.";
+            }
+            finally
+            {
+                IsDownloadingUpdate = false;
+                CommandManager.InvalidateRequerySuggested();
+            }
+        }
+
+        private void InstallDownloadedUpdate()
+        {
+            if (string.IsNullOrWhiteSpace(_downloadedInstallerPath) || !File.Exists(_downloadedInstallerPath))
+            {
+                IsUpdateDownloaded = false;
+                UpdateStatusText = "Installer missing";
+                UpdateActionText = "Download";
+                UpdateStatusDetail = "Installer missing. Download again.";
+                return;
+            }
+
+            try
+            {
+                if (string.IsNullOrWhiteSpace(_downloadedInstallerPath))
+                    throw new InvalidOperationException("Installer path is missing.");
+                var installerPath = _downloadedInstallerPath!;
+
+                IsInstallingUpdate = true;
+                UpdateStatusText = "Launching installer...";
+                UpdateActionText = "Launching...";
+                UpdateStatusDetail = "Opening installer...";
+                IsTopUpdateActionVisible = false;
+
+                var installerProcess = Process.Start(new ProcessStartInfo(installerPath) { UseShellExecute = true });
+                if (installerProcess != null)
+                    StartInstallerCleanup(installerProcess.Id, installerPath);
+
+                System.Windows.Application.Current?.Shutdown();
+            }
+            catch
+            {
+                UpdateStatusText = "Install failed";
+                UpdateActionText = "Install";
+                UpdateStatusDetail = "Could not launch installer.";
+            }
+            finally
+            {
+                IsInstallingUpdate = false;
                 CommandManager.InvalidateRequerySuggested();
             }
         }
@@ -190,6 +410,50 @@ namespace EchoX.ViewModels
             return await client.DownloadStringTaskAsync(new Uri(LatestReleaseApiUrl)).ConfigureAwait(true);
         }
 
+        private static WebClient CreateDownloadClient()
+        {
+            var client = new WebClient();
+            client.Headers[HttpRequestHeader.UserAgent] = "EchoX-Updater/1.0";
+            return client;
+        }
+
+        private static void StartInstallerCleanup(int installerProcessId, string installerPath)
+        {
+            var escapedPath = installerPath.Replace("'", "''");
+            var cleanupScript =
+                $"Wait-Process -Id {installerProcessId}; " +
+                "Start-Sleep -Seconds 2; " +
+                $"Remove-Item -LiteralPath '{escapedPath}' -Force -ErrorAction SilentlyContinue";
+
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "powershell.exe",
+                Arguments = $"-NoProfile -WindowStyle Hidden -Command \"{cleanupScript}\"",
+                CreateNoWindow = true,
+                UseShellExecute = false
+            });
+        }
+
+        private static ReleaseAssetInfo? FindInstallerAsset(JObject releaseJson)
+        {
+            var assets = releaseJson["assets"] as JArray;
+            if (assets == null)
+                return null;
+
+            var installerAsset = assets
+                .OfType<JObject>()
+                .Select(asset => new ReleaseAssetInfo
+                {
+                    Name = asset["name"]?.ToString() ?? string.Empty,
+                    BrowserDownloadUrl = asset["browser_download_url"]?.ToString() ?? string.Empty
+                })
+                .FirstOrDefault(asset =>
+                    asset.Name.StartsWith(InstallerAssetNamePrefix, StringComparison.OrdinalIgnoreCase) &&
+                    asset.Name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase));
+
+            return installerAsset;
+        }
+
         private static string NormalizeVersionLabel(string rawVersion)
         {
             if (string.IsNullOrWhiteSpace(rawVersion))
@@ -206,6 +470,23 @@ namespace EchoX.ViewModels
 
             var normalized = NormalizeVersionLabel(rawVersion!);
             return Version.TryParse(normalized, out version);
+        }
+
+        private void NotifyTopUpdateUiStateChanged()
+        {
+            OnPropertyChanged(nameof(IsUpdateActionAvailable));
+            OnPropertyChanged(nameof(ShowTopUpdateStatus));
+            OnPropertyChanged(nameof(ShowTopUpdateStatusPill));
+            OnPropertyChanged(nameof(ShowTopUpdateProgress));
+            OnPropertyChanged(nameof(ShowTopUpdateActionButton));
+            OnPropertyChanged(nameof(IsTopUpdateClickable));
+            OnPropertyChanged(nameof(TopUpdateButtonText));
+        }
+
+        private sealed class ReleaseAssetInfo
+        {
+            public string Name { get; set; } = string.Empty;
+            public string BrowserDownloadUrl { get; set; } = string.Empty;
         }
     }
 }
