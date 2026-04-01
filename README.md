@@ -36,7 +36,7 @@ Created by **Shanto Joseph**.
 ## Screenshots
 
 <p align="center">
-  <img src="https://res.cloudinary.com/dk6i1ld2q/image/upload/v1775026952/Echo-ezgif.com-optimize_gxumyu.gif" alt="EchoX app preview" width="900" />
+  <img src="Assets/screenshots/echox-preview.gif" alt="EchoX app preview" width="900" />
 </p>
 
 ## Built With
