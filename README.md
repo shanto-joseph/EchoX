@@ -36,11 +36,7 @@ Created by **Shanto Joseph**.
 ## Screenshots
 
 <p align="center">
-  <img src="Assets/screenshots/echox-main.png" alt="EchoX main window" width="900" />
-</p>
-
-<p align="center">
-  Add your latest app screenshot at <code>Assets/screenshots/echox-main.png</code>.
+  <img src="https://res.cloudinary.com/dk6i1ld2q/image/upload/v1775026952/Echo-ezgif.com-optimize_gxumyu.gif" alt="EchoX app preview" width="900" />
 </p>
 
 ## Built With
@@ -68,7 +64,12 @@ ViewModels/    MVVM presentation logic
 
 If EchoX helps your setup and you want to support future updates:
 
-**https://coffee.shantojoseph.com/**
+<p align="center">
+  <a href="https://coffee.shantojoseph.com/">
+    <img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-Support%20EchoX-7a5c3e?style=for-the-badge" alt="Buy me a coffee" />
+  </a>
+</p>
+
 
 ## Creator
 

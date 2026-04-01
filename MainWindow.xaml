@@ -77,6 +77,28 @@
             <Setter Property="Foreground" Value="{StaticResource TextHi}"/>
         </Style>
 
+        <Style TargetType="ToolTip">
+            <Setter Property="Background" Value="{StaticResource BgCard}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextHi}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Border}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="8,5"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToolTip">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="7"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- NAV BUTTON -->
         <Style x:Key="NavBtn" TargetType="Button">
             <Setter Property="Background"                 Value="Transparent"/>
@@ -205,6 +227,14 @@
         <Style x:Key="BtnDanger" TargetType="Button" BasedOn="{StaticResource BtnGhost}">
             <Setter Property="Foreground"  Value="{StaticResource Red}"/>
             <Setter Property="BorderBrush" Value="#F8717130"/>
+        </Style>
+
+        <Style x:Key="MiniAccentProgressBar" TargetType="ProgressBar">
+            <Setter Property="Height" Value="4"/>
+            <Setter Property="Background" Value="{StaticResource BgRaised}"/>
+            <Setter Property="Foreground" Value="{StaticResource Accent}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BgRaised}"/>
+            <Setter Property="BorderThickness" Value="0"/>
         </Style>
 
         <!-- TEXTBOX -->
@@ -542,7 +572,7 @@
                                           Data="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"
                                           Fill="{StaticResource TextLow}"/>
                                 </Viewbox>
-                                <TextBlock x:Name="VerTxt" Text="v1.0.0"
+                                <TextBlock x:Name="VerTxt" Text="{Binding AboutViewModel.AppVersion, StringFormat='v{0}'}"
                                            Foreground="{StaticResource TextLow}" FontSize="11" VerticalAlignment="Center"/>
                             </StackPanel>
                             <ControlTemplate.Triggers>
@@ -2899,6 +2929,12 @@
                                     <TextBlock Text="{Binding AboutViewModel.UpdateStatusDetail}"
                                                Foreground="{StaticResource TextMid}" FontSize="12" Margin="0,2,0,0"
                                                TextWrapping="Wrap"/>
+                                    <ProgressBar Height="6"
+                                                 Margin="0,10,0,0"
+                                                 Minimum="0"
+                                                 Maximum="100"
+                                                 Value="{Binding AboutViewModel.DownloadProgressPercentage, Mode=OneWay}"
+                                                 Visibility="{Binding AboutViewModel.IsDownloadingUpdate, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                                 </StackPanel>
                                 <Button Grid.Column="2" Style="{StaticResource BtnPrimary}"
                                         Height="30" Padding="14,0" VerticalAlignment="Center"
@@ -2925,9 +2961,16 @@
                     MouseLeftButtonDown="TitleBar_MouseLeftButtonDown"/>
             <StackPanel HorizontalAlignment="Right" VerticalAlignment="Top"
                         Orientation="Horizontal" Margin="0,8,10,0" Panel.ZIndex="99">
-                <Button Command="{Binding AboutViewModel.CheckForUpdateCommand}"
-                        Height="30" MinWidth="132" Margin="0,0,10,0"
-                        Background="Transparent" BorderThickness="0" Cursor="Hand"
+                <Button Command="{Binding AboutViewModel.RevealTopUpdateActionCommand}"
+                        Height="30"
+                        MinWidth="96"
+                        Margin="0,0,10,0"
+                        Padding="7,0"
+                        IsEnabled="{Binding AboutViewModel.IsTopUpdateClickable}"
+                        Visibility="{Binding AboutViewModel.ShowTopUpdateStatusPill, Converter={StaticResource BooleanToVisibilityConverter}}"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Cursor="Hand"
                         ToolTip="{Binding AboutViewModel.UpdateStatusDetail}">
                     <Button.Style>
                         <Style TargetType="Button">
@@ -2940,18 +2983,22 @@
                                                 BorderBrush="{StaticResource Border}"
                                                 BorderThickness="1"
                                                 CornerRadius="8"
-                                                Padding="10,0">
-                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                Padding="8,0">
+                                            <StackPanel VerticalAlignment="Center">
+                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
                                                 <Ellipse Width="7" Height="7" Margin="0,0,8,0" VerticalAlignment="Center">
                                                     <Ellipse.Style>
                                                         <Style TargetType="Ellipse">
                                                             <Setter Property="Fill" Value="{StaticResource TextMid}"/>
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding AboutViewModel.IsCheckingForUpdates}" Value="True">
-                                                                    <Setter Property="Fill" Value="{StaticResource Blue}"/>
+                                                                    <Setter Property="Fill" Value="{StaticResource Accent}"/>
                                                                 </DataTrigger>
                                                                 <DataTrigger Binding="{Binding AboutViewModel.IsUpdateAvailable}" Value="True">
-                                                                    <Setter Property="Fill" Value="{StaticResource Amber}"/>
+                                                                    <Setter Property="Fill" Value="{StaticResource Accent}"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding AboutViewModel.IsUpdateDownloaded}" Value="True">
+                                                                    <Setter Property="Fill" Value="{StaticResource Accent}"/>
                                                                 </DataTrigger>
                                                             </Style.Triggers>
                                                         </Style>
@@ -2962,6 +3009,18 @@
                                                            FontSize="11.5"
                                                            FontWeight="SemiBold"
                                                            VerticalAlignment="Center"/>
+                                                <TextBlock Text="  ▾"
+                                                           FontSize="11"
+                                                           Foreground="{TemplateBinding Foreground}"
+                                                           VerticalAlignment="Center"
+                                                           Visibility="Collapsed"/>
+                                                </StackPanel>
+                                                <ProgressBar Height="4"
+                                                             Margin="0,4,0,0"
+                                                             Minimum="0"
+                                                             Maximum="100"
+                                                             Value="{Binding AboutViewModel.DownloadProgressPercentage, Mode=OneWay}"
+                                                             Visibility="{Binding AboutViewModel.IsDownloadingUpdate, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                                             </StackPanel>
                                         </Border>
                                         <ControlTemplate.Triggers>
@@ -2970,7 +3029,7 @@
                                                 <Setter TargetName="R" Property="Background" Value="{StaticResource BgRaised}"/>
                                             </Trigger>
                                             <Trigger Property="IsEnabled" Value="False">
-                                                <Setter TargetName="R" Property="Opacity" Value="0.82"/>
+                                                <Setter TargetName="R" Property="Opacity" Value="0.88"/>
                                             </Trigger>
                                         </ControlTemplate.Triggers>
                                     </ControlTemplate>
@@ -2978,15 +3037,49 @@
                             </Setter>
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding AboutViewModel.IsCheckingForUpdates}" Value="True">
-                                    <Setter Property="Foreground" Value="{StaticResource Blue}"/>
+                                    <Setter Property="Foreground" Value="{StaticResource Accent}"/>
                                 </DataTrigger>
                                 <DataTrigger Binding="{Binding AboutViewModel.IsUpdateAvailable}" Value="True">
-                                    <Setter Property="Foreground" Value="{StaticResource Amber}"/>
+                                    <Setter Property="Foreground" Value="{StaticResource Accent}"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding AboutViewModel.IsUpdateDownloaded}" Value="True">
+                                    <Setter Property="Foreground" Value="{StaticResource Accent}"/>
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>
                     </Button.Style>
                 </Button>
+                <Border Height="30"
+                        MinWidth="112"
+                        Margin="0,0,10,0"
+                        Background="{StaticResource BgCard}"
+                        BorderBrush="{StaticResource Border}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="7,0"
+                        Visibility="{Binding AboutViewModel.ShowTopUpdateProgress, Converter={StaticResource BooleanToVisibilityConverter}}"
+                        ToolTip="{Binding AboutViewModel.UpdateStatusDetail}">
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="{Binding AboutViewModel.UpdateStatusText}"
+                                   Foreground="{StaticResource Accent}"
+                                   FontSize="11"
+                                   FontWeight="SemiBold"
+                                   HorizontalAlignment="Center"/>
+                        <ProgressBar Style="{StaticResource MiniAccentProgressBar}"
+                                     Margin="0,4,0,0"
+                                     Minimum="0"
+                                     Maximum="100"
+                                     Value="{Binding AboutViewModel.DownloadProgressPercentage, Mode=OneWay}"/>
+                    </StackPanel>
+                </Border>
+                <Button Command="{Binding AboutViewModel.CheckForUpdateCommand}"
+                        Height="28"
+                        MinWidth="82"
+                        Margin="0,0,10,0"
+                        Padding="10,0"
+                        Style="{StaticResource BtnPrimary}"
+                        Content="{Binding AboutViewModel.TopUpdateButtonText}"
+                        Visibility="{Binding AboutViewModel.ShowTopUpdateActionButton, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                 <Button Click="MinimizeBtn_Click" Width="38" Height="32"
                         Background="Transparent" BorderThickness="0" Cursor="Hand">
                     <Button.Template>
