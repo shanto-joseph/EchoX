@@ -14,7 +14,9 @@ namespace EchoX.ViewModels
     public class SettingsViewModel : ViewModelBase
     {
         private const string RunKeyPath = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run";
+        private const string StartupApprovedRunKeyPath = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run";
         private const string AppName = "EchoX";
+        private static readonly byte[] StartupApprovedEnabledValue = { 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 
         private bool _launchWithWindows;
         private UpdatePreference _updatePreference = UpdatePreference.NotifyOnly;
@@ -220,8 +222,15 @@ namespace EchoX.ViewModels
         {
             try
             {
-                using var key = Registry.CurrentUser.OpenSubKey(RunKeyPath, false);
-                return key?.GetValue(AppName) != null;
+                using var runKey = Registry.CurrentUser.OpenSubKey(RunKeyPath, false);
+                if (runKey?.GetValue(AppName) == null)
+                    return false;
+
+                using var approvedKey = Registry.CurrentUser.OpenSubKey(StartupApprovedRunKeyPath, false);
+                if (approvedKey?.GetValue(AppName) is not byte[] approvedValue || approvedValue.Length == 0)
+                    return true;
+
+                return approvedValue[0] == 0x02;
             }
             catch
             {
@@ -233,11 +242,18 @@ namespace EchoX.ViewModels
         {
             try
             {
-                using var key = Registry.CurrentUser.OpenSubKey(RunKeyPath, true);
+                using var key = Registry.CurrentUser.CreateSubKey(RunKeyPath);
+                using var approvedKey = Registry.CurrentUser.CreateSubKey(StartupApprovedRunKeyPath);
                 if (enable)
+                {
                     key?.SetValue(AppName, $"\"{Assembly.GetExecutingAssembly().Location}\" --tray");
+                    approvedKey?.SetValue(AppName, StartupApprovedEnabledValue, RegistryValueKind.Binary);
+                }
                 else
+                {
                     key?.DeleteValue(AppName, false);
+                    approvedKey?.DeleteValue(AppName, false);
+                }
             }
             catch (Exception ex)
             {
