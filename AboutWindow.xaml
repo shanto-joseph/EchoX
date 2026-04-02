@@ -123,6 +123,15 @@
                                     View project on GitHub
                                 </Hyperlink>
                             </TextBlock>
+                            <TextBlock FontSize="11"
+                                       Margin="0,4,0,0">
+                                <Hyperlink NavigateUri="https://echox.notrazer.xyz/"
+                                           RequestNavigate="CreatorLink_RequestNavigate"
+                                           Foreground="#53C028"
+                                           TextDecorations="{x:Null}">
+                                    Visit EchoX website
+                                </Hyperlink>
+                            </TextBlock>
                         </StackPanel>
                     </Grid>
                 </Border>

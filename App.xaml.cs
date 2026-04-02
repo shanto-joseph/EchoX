@@ -49,6 +49,16 @@ public partial class App : System.Windows.Application
 
         var mainWindow = new MainWindow(launchToTray);
         MainWindow = mainWindow;
+
+        if (launchToTray)
+        {
+            // Create the window hidden so startup-to-tray doesn't flash UI
+            // before MainWindow finishes its tray/hook initialization.
+            mainWindow.Visibility = Visibility.Hidden;
+            mainWindow.Show();
+            return;
+        }
+
         mainWindow.Show();
     }
 

@@ -495,14 +495,17 @@ namespace EchoX
             {
                 this.MaxWidth  = double.PositiveInfinity;
                 this.MaxHeight = double.PositiveInfinity;
-
-                // Center on screen when restoring from maximized
-                var screen = System.Windows.Forms.Screen.FromHandle(
-                    new System.Windows.Interop.WindowInteropHelper(this).Handle);
-                var wa = screen.WorkingArea;
-                this.Left = wa.Left + (wa.Width  - this.Width)  / 2;
-                this.Top  = wa.Top  + (wa.Height - this.Height) / 2;
+                CenterWindowOnCurrentScreen();
             }
+        }
+
+        private void CenterWindowOnCurrentScreen()
+        {
+            var screen = System.Windows.Forms.Screen.FromHandle(
+                new System.Windows.Interop.WindowInteropHelper(this).Handle);
+            var wa = screen.WorkingArea;
+            this.Left = wa.Left + (wa.Width  - this.Width)  / 2;
+            this.Top  = wa.Top  + (wa.Height - this.Height) / 2;
         }
 
         private void ShowApp()
@@ -513,6 +516,9 @@ namespace EchoX
 
             if (!ShowInTaskbar)
                 ShowInTaskbar = true;
+
+            if (WindowState != WindowState.Maximized)
+                CenterWindowOnCurrentScreen();
 
             if (!IsVisible)
                 Show();

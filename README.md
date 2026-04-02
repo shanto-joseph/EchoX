@@ -12,6 +12,8 @@
 <p align="center">
   <a href="https://github.com/shanto-joseph/EchoX">GitHub</a>
   ·
+  <a href="https://echox.notrazer.xyz/">Website</a>
+  ·
   <a href="https://shantojoseph.com/">Buy me a coffee</a>
 </p>
 
@@ -70,7 +72,6 @@ If EchoX helps your setup and you want to support future updates:
   </a>
 </p>
 
-
 ## Creator
 
 <p>
@@ -78,8 +79,8 @@ If EchoX helps your setup and you want to support future updates:
   <a href="https://shantojoseph.com/"><strong>Shanto Joseph</strong></a>
 </p>
 
-- GitHub: https://github.com/shanto-joseph
-- Project: https://github.com/shanto-joseph/EchoX
+- GitHub: https://github.com/shanto-joseph/EchoX
+- Website: https://echox.notrazer.xyz/
 
 ## License
 
