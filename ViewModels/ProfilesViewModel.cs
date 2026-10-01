@@ -39,9 +39,18 @@ namespace EchoX.ViewModels
             // Step 2: Refresh asynchronously
             System.Threading.Tasks.Task.Run(() => InitialLoad());
 
-            // Step 3: Watch for new devices (USB plug/unplug) in realtime
-            _deviceWatcher = _audioEngine.WatchDevices(() => {
-                System.Threading.Tasks.Task.Run(() => InitialLoad());
+            // Registering the watcher also initializes the audio controller.
+            System.Threading.Tasks.Task.Run(() => {
+                try
+                {
+                    _deviceWatcher = _audioEngine.WatchDevices(() => {
+                        System.Threading.Tasks.Task.Run(() => InitialLoad());
+                    });
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error watching devices: {ex.Message}");
+                }
             });
 
             Profiles.CollectionChanged += (s, e) => {
@@ -738,7 +747,7 @@ namespace EchoX.ViewModels
 
         private void ActivateProfile(AudioProfile profile)
         {
-            if (profile == null) return;
+            if (profile == null || !_mainWindowViewModel.DevicesViewModel.IsReady) return;
             try
             {
                 _isActivating = true;
@@ -844,6 +853,9 @@ namespace EchoX.ViewModels
 
         public void ToggleMicMute()
         {
+            if (!_mainWindowViewModel.DevicesViewModel.IsReady)
+                return;
+
             bool isNowMuted = _audioEngine.ToggleMuteDefaultMic();
             
             // Invoke the event for MainWindow tray icon/GUI

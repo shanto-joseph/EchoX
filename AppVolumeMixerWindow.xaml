@@ -23,12 +23,13 @@
         <Style x:Key="MixerVolumeSlider" TargetType="Slider">
             <Setter Property="Minimum" Value="0"/>
             <Setter Property="Maximum" Value="100"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="ForceCursor" Value="True"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="IsMoveToPointEnabled" Value="True"/>
             <Setter Property="MinHeight" Value="28"/>
             <Setter Property="SmallChange" Value="1"/>
             <Setter Property="LargeChange" Value="4"/>
-            <EventSetter Event="PreviewMouseWheel" Handler="VolumeSlider_PreviewMouseWheel"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Slider">
@@ -58,11 +59,14 @@
                                     </RepeatButton>
                                 </Track.IncreaseRepeatButton>
                                 <Track.Thumb>
-                                    <Thumb>
+                                    <Thumb Width="24"
+                                           Height="24"
+                                           VerticalAlignment="Center">
                                         <Thumb.Template>
                                             <ControlTemplate TargetType="Thumb">
                                                 <Grid Width="24" Height="24" Background="Transparent">
-                                                    <Border Width="14"
+                                                    <Border x:Name="VolumeDot"
+                                                            Width="14"
                                                             Height="14"
                                                             Background="#53C028"
                                                             CornerRadius="7"
@@ -71,6 +75,65 @@
                                                             HorizontalAlignment="Center"
                                                             VerticalAlignment="Center"/>
                                                 </Grid>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsDragging" Value="True">
+                                                        <Setter TargetName="VolumeDot" Property="Width" Value="16"/>
+                                                        <Setter TargetName="VolumeDot" Property="Height" Value="16"/>
+                                                        <Setter TargetName="VolumeDot" Property="CornerRadius" Value="8"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="MixerScrollBar" TargetType="ScrollBar">
+            <Setter Property="Width" Value="6"/>
+            <Setter Property="MinWidth" Value="0"/>
+            <Setter Property="Background" Value="#1A1D20"/>
+            <Setter Property="Foreground" Value="#53C028"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollBar">
+                        <Grid Background="{TemplateBinding Background}">
+                            <Track x:Name="PART_Track"
+                                Margin="0,4"
+                                   IsDirectionReversed="True">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Command="ScrollBar.LineUpCommand"
+                                                  Background="Transparent"
+                                                  BorderThickness="0"
+                                                  IsTabStop="False">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="RepeatButton">
+                                                <Border Background="Transparent"/>
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+                                </Track.DecreaseRepeatButton>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Command="ScrollBar.LineDownCommand"
+                                                  Background="Transparent"
+                                                  BorderThickness="0"
+                                                  IsTabStop="False">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="RepeatButton">
+                                                <Border Background="Transparent"/>
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+                                </Track.IncreaseRepeatButton>
+                                <Track.Thumb>
+                                    <Thumb Background="#53C028">
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Border Background="{TemplateBinding Background}"
+                                                        CornerRadius="3"/>
                                             </ControlTemplate>
                                         </Thumb.Template>
                                     </Thumb>
@@ -160,8 +223,7 @@
                 <Border Grid.Row="0"
                         Padding="16,14"
                         BorderBrush="#2E3238"
-                        BorderThickness="0,0,0,1"
-                        PreviewMouseWheel="VolumeSlider_PreviewMouseWheel">
+                        BorderThickness="0,0,0,1">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
@@ -191,7 +253,7 @@
                             </StackPanel>
                         </Grid>
 
-                        <Grid Grid.Row="1" PreviewMouseWheel="VolumeSlider_PreviewMouseWheel">
+                        <Grid Grid.Row="1">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
@@ -221,14 +283,23 @@
                                VerticalAlignment="Center"
                                Visibility="Collapsed"/>
 
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                    <ScrollViewer x:Name="SessionScrollViewer"
+                                  Grid.Column="0"
+                                  VerticalScrollBarVisibility="Hidden"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  ScrollChanged="SessionScrollViewer_ScrollChanged">
                         <ItemsControl x:Name="SessionItemsControl" ItemsSource="{Binding Sessions}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Border Padding="16,14"
                                             BorderBrush="#2E3238"
-                                            BorderThickness="0,0,0,1"
-                                            PreviewMouseWheel="VolumeSlider_PreviewMouseWheel">
+                                            BorderThickness="0,0,0,1">
                                         <Grid>
                                             <Grid.RowDefinitions>
                                                 <RowDefinition Height="Auto"/>
@@ -314,7 +385,7 @@
                                                 </ToggleButton>
                                             </Grid>
 
-                                            <Grid Grid.Row="1" PreviewMouseWheel="VolumeSlider_PreviewMouseWheel">
+                                            <Grid Grid.Row="1">
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="*"/>
                                                     <ColumnDefinition Width="Auto"/>
@@ -339,6 +410,16 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                     </ScrollViewer>
+                        <ScrollBar x:Name="SessionScrollBar"
+                                   Grid.Column="1"
+                                   Margin="0,4,0,4"
+                                   Minimum="0"
+                                   Maximum="0"
+                                   ViewportSize="1"
+                                   Visibility="Collapsed"
+                                   Style="{StaticResource MixerScrollBar}"
+                                   ValueChanged="SessionScrollBar_ValueChanged"/>
+                    </Grid>
                 </Grid>
             </Grid>
         </Grid>

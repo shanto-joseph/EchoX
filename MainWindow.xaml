@@ -358,6 +358,24 @@
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Padding"         Value="0"/>
             <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBox">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                Padding="{TemplateBinding Padding}">
+                            <ScrollViewer x:Name="PART_ScrollViewer"
+                                          Focusable="False"
+                                          CanContentScroll="{TemplateBinding ScrollViewer.CanContentScroll}"
+                                          HorizontalScrollBarVisibility="{TemplateBinding ScrollViewer.HorizontalScrollBarVisibility}"
+                                          VerticalScrollBarVisibility="{TemplateBinding ScrollViewer.VerticalScrollBarVisibility}">
+                                <ItemsPresenter/>
+                            </ScrollViewer>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
         <!-- LISTBOXITEM -->
@@ -391,7 +409,10 @@
         <Style x:Key="VolumeSlider" TargetType="Slider">
             <Setter Property="Minimum"          Value="0"/>
             <Setter Property="Maximum"          Value="100"/>
+            <Setter Property="Cursor"           Value="Hand"/>
+            <Setter Property="ForceCursor"      Value="True"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="MinHeight"         Value="28"/>
             <EventSetter Event="PreviewMouseWheel" Handler="VolumeSlider_PreviewMouseWheel"/>
             <Setter Property="Template">
                 <Setter.Value>
@@ -422,11 +443,22 @@
                                     </RepeatButton>
                                 </Track.IncreaseRepeatButton>
                                 <Track.Thumb>
-                                    <Thumb>
+                                    <Thumb Width="24" Height="24" VerticalAlignment="Center">
                                         <Thumb.Template>
                                             <ControlTemplate TargetType="Thumb">
-                                                <Border Width="14" Height="14" Background="{StaticResource Accent}"
-                                                        CornerRadius="7" BorderBrush="#0B0E0F" BorderThickness="2"/>
+                                                <Grid Width="24" Height="24" Background="Transparent">
+                                                    <Border x:Name="VolumeDot"
+                                                            Width="14" Height="14" Background="{StaticResource Accent}"
+                                                            CornerRadius="7" BorderBrush="#0B0E0F" BorderThickness="2"
+                                                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Grid>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsDragging" Value="True">
+                                                        <Setter TargetName="VolumeDot" Property="Width" Value="16"/>
+                                                        <Setter TargetName="VolumeDot" Property="Height" Value="16"/>
+                                                        <Setter TargetName="VolumeDot" Property="CornerRadius" Value="8"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
                                             </ControlTemplate>
                                         </Thumb.Template>
                                     </Thumb>
@@ -559,6 +591,28 @@
 
                 <Separator DockPanel.Dock="Top" Background="{StaticResource Border}" Height="1" Margin="0,0,0,8"/>
 
+                <Grid x:Name="StartupStatusPanel" DockPanel.Dock="Top" Margin="16,0,16,12"
+                      Visibility="{Binding DevicesViewModel.IsReady, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="{Binding DevicesViewModel.InitializationStatus}"
+                                   Foreground="{StaticResource TextMid}" FontSize="11" TextWrapping="Wrap"/>
+                        <ProgressBar Style="{StaticResource MiniAccentProgressBar}"
+                                     IsIndeterminate="True" Margin="0,6,0,0"
+                                     Visibility="{Binding DevicesViewModel.IsInitializing, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                    </StackPanel>
+                    <Button Grid.Column="1" Width="24" Height="24" Margin="6,0,0,0"
+                            VerticalAlignment="Top" Cursor="Hand" Background="Transparent" BorderThickness="0"
+                            Foreground="{StaticResource Accent}" ToolTip="Retry audio discovery"
+                            Command="{Binding DevicesViewModel.RetryInitializationCommand}"
+                            Visibility="{Binding DevicesViewModel.IsInitializing, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
+                        <TextBlock Text="&#xE72C;" FontFamily="Segoe MDL2 Assets" FontSize="13"/>
+                    </Button>
+                </Grid>
+
                 <!-- Version pinned to bottom — must be declared before the fill item -->
                 <Button DockPanel.Dock="Bottom" HorizontalAlignment="Left" Margin="20,0,0,18"
                         Background="Transparent" BorderThickness="0" Cursor="Hand"
@@ -640,6 +694,7 @@
 
         <!-- ══════════════════════════════════ CONTENT -->
         <TabControl x:Name="MainTabControl" Grid.Column="1"
+                    IsEnabled="{Binding DevicesViewModel.IsReady}"
                     Background="{StaticResource BgBase}" BorderThickness="0" SelectedIndex="0"
                     SelectionChanged="MainTabControl_SelectionChanged">
             <TabControl.ItemContainerStyle>

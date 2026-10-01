@@ -19,6 +19,7 @@ namespace EchoX
         private readonly System.Windows.Threading.DispatcherTimer _focusWatchTimer;
         private bool _isClosing;
         private bool _isRefreshing;
+        private bool _isUpdatingScrollBar;
         private DateTime _suppressAutoCloseUntil = DateTime.MinValue;
 
         public AppVolumeMixerWindow(DevicesViewModel devicesViewModel)
@@ -187,19 +188,20 @@ namespace EchoX
             }
         }
 
-        private void VolumeSlider_PreviewMouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
+        private void SessionScrollViewer_ScrollChanged(object sender, ScrollChangedEventArgs e)
         {
-            var slider = sender as System.Windows.Controls.Slider
-                ?? FindAncestor<System.Windows.Controls.Slider>(e.OriginalSource as DependencyObject)
-                ?? FindDescendant<System.Windows.Controls.Slider>(sender as DependencyObject);
+            _isUpdatingScrollBar = true;
+            SessionScrollBar.Maximum = Math.Max(0, e.ExtentHeight - e.ViewportHeight);
+            SessionScrollBar.ViewportSize = e.ViewportHeight;
+            SessionScrollBar.Value = Math.Min(SessionScrollBar.Maximum, e.VerticalOffset);
+            SessionScrollBar.Visibility = SessionScrollBar.Maximum > 0 ? Visibility.Visible : Visibility.Collapsed;
+            _isUpdatingScrollBar = false;
+        }
 
-            if (slider == null)
-                return;
-
-            double step = 2;
-            double newValue = slider.Value + (e.Delta > 0 ? step : -step);
-            slider.Value = Math.Max(slider.Minimum, Math.Min(slider.Maximum, newValue));
-            e.Handled = true;
+        private void SessionScrollBar_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (!_isUpdatingScrollBar)
+                SessionScrollViewer.ScrollToVerticalOffset(e.NewValue);
         }
 
         private void Header_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -262,36 +264,5 @@ namespace EchoX
             SystemVolumeTextBlock.Text = $"{Math.Round(value)}%";
         }
 
-        private static T? FindAncestor<T>(DependencyObject? element) where T : DependencyObject
-        {
-            while (element != null)
-            {
-                if (element is T match)
-                    return match;
-
-                element = VisualTreeHelper.GetParent(element);
-            }
-
-            return null;
-        }
-
-        private static T? FindDescendant<T>(DependencyObject? root) where T : DependencyObject
-        {
-            if (root == null)
-                return null;
-
-            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
-            {
-                var child = VisualTreeHelper.GetChild(root, i);
-                if (child is T match)
-                    return match;
-
-                var nested = FindDescendant<T>(child);
-                if (nested != null)
-                    return nested;
-            }
-
-            return null;
-        }
     }
 }
