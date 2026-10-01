@@ -35,6 +35,9 @@ namespace EchoX.ViewModels
         private double _targetPeak;
         private double _currentPeak;
         private System.Windows.Threading.DispatcherTimer? _smoothingTimer;
+        private bool _isInitializing;
+        private bool _isReady;
+        private string _initializationStatus = "Loading audio devices...";
 
         public DevicesViewModel(MainWindowViewModel mainWindowViewModel, AudioEngine audioEngine, StorageService storageService)
         {
@@ -48,6 +51,7 @@ namespace EchoX.ViewModels
             SetCallInputCommand  = new RelayCommand<AudioDevice>(SetCallInput);
             SetCallOutputCommand = new RelayCommand<AudioDevice>(SetCallOutput);
             ToggleMicTestCommand = new RelayCommand(() => IsMicTesting = !IsMicTesting);
+            RetryInitializationCommand = new RelayCommand(StartDeviceInitialization, () => !IsInitializing && !IsReady);
 
             // Step 1: Load cache immediately for "instant" feel
             var cache = _storageService.LoadDeviceCache();
@@ -63,22 +67,76 @@ namespace EchoX.ViewModels
                 OnPropertyChanged(nameof(CurrentOutputDevice));
             }
 
-            // Step 2: Refresh the list in the background
-            System.Threading.Tasks.Task.Run(() => LoadDevices());
-
-            // Step 3: Watch for device changes (plug/unplug + default device switch) in realtime
-            _deviceWatcher = _audioEngine.WatchDefaultDeviceChanged(() =>
-            {
-                RefreshDefaultDevices();
-            });
-
             _defaultDevicePollTimer = new System.Windows.Threading.DispatcherTimer(
                 System.Windows.Threading.DispatcherPriority.Background)
             {
                 Interval = TimeSpan.FromMilliseconds(700)
             };
             _defaultDevicePollTimer.Tick += (s, e) => RefreshDefaultDevices();
-            _defaultDevicePollTimer.Start();
+            StartDeviceInitialization();
+        }
+
+        public bool IsInitializing
+        {
+            get => _isInitializing;
+            private set
+            {
+                if (SetProperty(ref _isInitializing, value))
+                    CommandManager.InvalidateRequerySuggested();
+            }
+        }
+
+        public bool IsReady
+        {
+            get => _isReady;
+            private set => SetProperty(ref _isReady, value);
+        }
+
+        public string InitializationStatus
+        {
+            get => _initializationStatus;
+            private set => SetProperty(ref _initializationStatus, value);
+        }
+
+        public ICommand RetryInitializationCommand { get; }
+
+        private void StartDeviceInitialization()
+        {
+            if (IsInitializing || IsReady)
+                return;
+
+            IsInitializing = true;
+            InitializationStatus = "Loading audio devices...";
+            System.Threading.Tasks.Task.Run(() =>
+            {
+                try
+                {
+                    _deviceWatcher ??= _audioEngine.WatchDefaultDeviceChanged(() =>
+                    {
+                        if (IsReady)
+                            RefreshDefaultDevices();
+                    });
+                    LoadDevices();
+                }
+                catch (Exception ex)
+                {
+                    ReportDeviceLoadFailure(ex);
+                }
+            });
+        }
+
+        private void ReportDeviceLoadFailure(Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error loading devices: {ex.Message}");
+            System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (IsInitializing)
+                {
+                    IsReady = false;
+                    InitializationStatus = "Audio devices unavailable";
+                    IsInitializing = false;
+                }
+            }));
         }
 
         public ObservableCollection<AudioDevice> InputDevices  { get; } = new ObservableCollection<AudioDevice>();
@@ -333,67 +391,78 @@ namespace EchoX.ViewModels
 
                 System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
                 {
-                    // Update only if necessary to avoid UI flicker
-                    UpdateCollection(InputDevices, mics);
-                    UpdateCollection(OutputDevices, speakers);
-
-                    // Combine for AllDevices
-                    var combined = mics.Concat(speakers).ToList();
-                    UpdateCollection(AllDevices, combined);
-
-                    // Only update current devices from OS if no profile switch is in progress
-                    if (_pendingSwitches == 0)
+                    try
                     {
-                        _currentInputDevice  = defaultMic != null
-                            ? InputDevices.FirstOrDefault(d => d.Id == defaultMic.Id.ToString()) ?? InputDevices.FirstOrDefault()
+                        // Update only if necessary to avoid UI flicker
+                        UpdateCollection(InputDevices, mics);
+                        UpdateCollection(OutputDevices, speakers);
+
+                        // Combine for AllDevices
+                        var combined = mics.Concat(speakers).ToList();
+                        UpdateCollection(AllDevices, combined);
+
+                        // Only update current devices from OS if no profile switch is in progress
+                        if (_pendingSwitches == 0)
+                        {
+                            _currentInputDevice  = defaultMic != null
+                                ? InputDevices.FirstOrDefault(d => d.Id == defaultMic.Id.ToString()) ?? InputDevices.FirstOrDefault()
+                                : InputDevices.FirstOrDefault();
+                            _currentOutputDevice = defaultSpeaker != null
+                                ? OutputDevices.FirstOrDefault(d => d.Id == defaultSpeaker.Id.ToString()) ?? OutputDevices.FirstOrDefault()
+                                : OutputDevices.FirstOrDefault();
+                        }
+                        foreach (var d in InputDevices) d.IsCallDevice = false;
+                        foreach (var d in OutputDevices) d.IsCallDevice = false;
+
+                        CurrentCallInputDevice = callMic != null
+                            ? InputDevices.FirstOrDefault(d => d.Id == callMic.Id.ToString()) ?? InputDevices.FirstOrDefault()
                             : InputDevices.FirstOrDefault();
-                        _currentOutputDevice = defaultSpeaker != null
-                            ? OutputDevices.FirstOrDefault(d => d.Id == defaultSpeaker.Id.ToString()) ?? OutputDevices.FirstOrDefault()
+
+                        CurrentCallOutputDevice = callSpeaker != null
+                            ? OutputDevices.FirstOrDefault(d => d.Id == callSpeaker.Id.ToString()) ?? OutputDevices.FirstOrDefault()
                             : OutputDevices.FirstOrDefault();
+
+                        if (CurrentCallInputDevice != null) CurrentCallInputDevice.IsCallDevice = true;
+                        if (CurrentCallOutputDevice != null) CurrentCallOutputDevice.IsCallDevice = true;
+
+                        // Read real volumes
+                        _inputVolume = _currentInputDevice != null ? _audioEngine.GetVolume(_currentInputDevice.Id) : 100;
+                        _outputVolume = _currentOutputDevice != null ? _audioEngine.GetVolume(_currentOutputDevice.Id) : 100;
+
+                        SetupWatchers();
+                        SyncMuteWatchers();
+
+                        OnPropertyChanged(nameof(CurrentInputDevice));
+                        OnPropertyChanged(nameof(CurrentOutputDevice));
+                        OnPropertyChanged(nameof(InputVolume));
+                        OnPropertyChanged(nameof(OutputVolume));
+
+                        // Only refresh active profile from LoadDevices if no profile switch is pending
+                        if (_pendingSwitches == 0)
+                            RefreshActiveProfile();
+
+                        // Step 3: Save results to cache for next run
+                        _storageService.SaveDeviceCache(new DeviceCache {
+                            InputDevices = mics,
+                            OutputDevices = speakers,
+                            LastInputId = _currentInputDevice?.Id,
+                            LastOutputId = _currentOutputDevice?.Id
+                        });
+
+                        IsReady = true;
+                        UpdateDeviceMuteStates();
+                        _defaultDevicePollTimer.Start();
+                        IsInitializing = false;
                     }
-                    foreach (var d in InputDevices) d.IsCallDevice = false;
-                    foreach (var d in OutputDevices) d.IsCallDevice = false;
-
-                    CurrentCallInputDevice = callMic != null
-                        ? InputDevices.FirstOrDefault(d => d.Id == callMic.Id.ToString()) ?? InputDevices.FirstOrDefault()
-                        : InputDevices.FirstOrDefault();
-
-                    CurrentCallOutputDevice = callSpeaker != null
-                        ? OutputDevices.FirstOrDefault(d => d.Id == callSpeaker.Id.ToString()) ?? OutputDevices.FirstOrDefault()
-                        : OutputDevices.FirstOrDefault();
-
-                    if (CurrentCallInputDevice != null) CurrentCallInputDevice.IsCallDevice = true;
-                    if (CurrentCallOutputDevice != null) CurrentCallOutputDevice.IsCallDevice = true;
-
-                    // Read real volumes
-                    _inputVolume = _currentInputDevice != null ? _audioEngine.GetVolume(_currentInputDevice.Id) : 100;
-                    _outputVolume = _currentOutputDevice != null ? _audioEngine.GetVolume(_currentOutputDevice.Id) : 100;
-
-                    SetupWatchers();
-                    SyncMuteWatchers();
-                    UpdateDeviceMuteStates();
-
-                    OnPropertyChanged(nameof(CurrentInputDevice));
-                    OnPropertyChanged(nameof(CurrentOutputDevice));
-                    OnPropertyChanged(nameof(InputVolume));
-                    OnPropertyChanged(nameof(OutputVolume));
-
-                    // Only refresh active profile from LoadDevices if no profile switch is pending
-                    if (_pendingSwitches == 0)
-                        RefreshActiveProfile();
-
-                    // Step 3: Save results to cache for next run
-                    _storageService.SaveDeviceCache(new DeviceCache {
-                        InputDevices = mics,
-                        OutputDevices = speakers,
-                        LastInputId = _currentInputDevice?.Id,
-                        LastOutputId = _currentOutputDevice?.Id
-                    });
+                    catch (Exception ex)
+                    {
+                        ReportDeviceLoadFailure(ex);
+                    }
                 }));
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error loading devices: {ex.Message}");
+                ReportDeviceLoadFailure(ex);
             }
         }
 
@@ -497,6 +566,8 @@ namespace EchoX.ViewModels
                     } catch { }
                 }
             }
+
+            _mainWindowViewModel.OnMicrophoneMuteChanged(_audioEngine.IsDefaultMicMuted);
         }
 
         public List<AppAudioSessionInfo> GetCurrentOutputSessions()

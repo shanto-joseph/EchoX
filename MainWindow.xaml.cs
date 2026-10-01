@@ -78,16 +78,7 @@ namespace EchoX
             };
 
             _viewModel.MicrophoneMuteChanged += OnMicrophoneMuteChanged;
-
-            // Listen for mute changes from Windows settings (external)
-            _viewModel.AudioEngine.WatchMute(isMuted =>
-            {
-                OnMicrophoneMuteChanged(isMuted);
-                _viewModel.DevicesViewModel.UpdateDeviceMuteStates();
-            });
-
-            // Set initial tray state
-            OnMicrophoneMuteChanged(_viewModel.AudioEngine.IsDefaultMicMuted);
+            _viewModel.SettingsViewModel.PropertyChanged += SettingsViewModel_PropertyChanged;
 
             // Apply OS-level rounded corners (Windows 11)
             SourceInitialized += (_, _) =>
@@ -384,32 +375,39 @@ namespace EchoX
 
         private void OnMicrophoneMuteChanged(bool isMuted)
         {
-            if (_trayIcon == null) return;
+            if (_isExiting || !_viewModel.DevicesViewModel.IsReady) return;
 
-            if (isMuted)
+            // A queued notification may belong to the previous microphone.
+            isMuted = _viewModel.AudioEngine.IsDefaultMicMuted;
+
+            var trayText = isMuted ? "EchoX (MUTED)" : "EchoX Audio Manager";
+            if (_trayIcon != null && _trayIcon.Text != trayText)
             {
-                _trayIcon.Icon = _mutedIcon;
-                _trayIcon.Text = "EchoX (MUTED)";
+                _trayIcon.Icon = isMuted ? _mutedIcon : _activeIcon;
+                _trayIcon.Text = trayText;
+            }
 
-                // Show persistent mute indicator if enabled
-                if (_viewModel.SettingsViewModel.ShowMuteIndicator)
+            if (isMuted && _viewModel.SettingsViewModel.ShowMuteIndicator)
+            {
+                if (_muteIndicator == null || !_muteIndicator.IsLoaded)
                 {
-                    if (_muteIndicator == null || !_muteIndicator.IsLoaded)
-                    {
-                        _muteIndicator = new MuteIndicator(_viewModel.SettingsViewModel.GetAppSettingsSnapshot());
-                        _muteIndicator.Show();
-                    }
+                    _muteIndicator = new MuteIndicator(_viewModel.SettingsViewModel.GetAppSettingsSnapshot());
                 }
+
+                if (!_muteIndicator.IsVisible)
+                    _muteIndicator.Show();
             }
             else
             {
-                _trayIcon.Icon = _activeIcon;
-                _trayIcon.Text = "EchoX Audio Manager";
-
-                // Hide mute indicator
                 _muteIndicator?.Close();
                 _muteIndicator = null;
             }
+        }
+
+        private void SettingsViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(SettingsViewModel.ShowMuteIndicator))
+                OnMicrophoneMuteChanged(false);
         }
 
         private System.Drawing.Icon CreateMuteIcon()
@@ -547,6 +545,8 @@ namespace EchoX
         private void CloseApp()
         {
             _isExiting = true;
+            _viewModel.MicrophoneMuteChanged -= OnMicrophoneMuteChanged;
+            _viewModel.SettingsViewModel.PropertyChanged -= SettingsViewModel_PropertyChanged;
             _muteIndicator?.Close();
             UnregisterNativeHotkeys();
             if (_windowSource != null)
@@ -812,6 +812,9 @@ namespace EchoX
 
         private void ShowOutputMixerWindow()
         {
+            if (!_viewModel.DevicesViewModel.IsReady)
+                return;
+
             if (_appVolumeMixerWindow != null && _appVolumeMixerWindow.IsLoaded)
             {
                 _appVolumeMixerWindow.BringToFront();
@@ -1408,6 +1411,11 @@ namespace EchoX
                 int btn = (info.mouseData >> 16) & 0xFFFF;
                 string label = btn == XBUTTON1 ? "Mouse Button 4" : "Mouse Button 5";
                 string keyName = btn == XBUTTON1 ? "XButton1" : "XButton2";
+                var normalAction = MatchGlobalMouseButton(keyName);
+                var normalHasProfileBinding = _viewModel.ProfilesViewModel._mouseButtonProfiles.ContainsKey(keyName);
+                if (!_isRecordingShortcut && !_isCapturingGlobal && normalAction == null && !normalHasProfileBinding)
+                    return CallNextHookEx(_globalMouseHook, nCode, wParam, lParam);
+
                 Dispatcher.BeginInvoke(new Action(() =>
                 {
                     if (_isRecordingShortcut)
@@ -1459,10 +1467,9 @@ namespace EchoX
                     }
                     else
                     {
-                        var action = MatchGlobalMouseButton(keyName);
-                        if (action != null)
+                        if (normalAction != null)
                         {
-                            action();
+                            normalAction();
                             return;
                         }
 
