@@ -74,6 +74,17 @@
             </Style>
         </Grid.Resources>
         <Canvas x:Name="DesignCanvas">
+            <Grid x:Name="ArrangementGrid"
+                  Width="{Binding ActualWidth, ElementName=DesignCanvas}"
+                  Height="{Binding ActualHeight, ElementName=DesignCanvas}"
+                  IsHitTestVisible="False">
+                <Border Height="1"
+                        VerticalAlignment="Center"
+                        Background="#4A70777F"/>
+                <Border Width="1"
+                        HorizontalAlignment="Center"
+                        Background="#4A70777F"/>
+            </Grid>
             <Border x:Name="TopPanel"
                     Canvas.Left="24"
                     Canvas.Top="24"

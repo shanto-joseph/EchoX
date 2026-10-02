@@ -154,6 +154,7 @@ namespace EchoX.ViewModels
 
         public ICommand CheckForUpdateCommand { get; }
         public ICommand RevealTopUpdateActionCommand { get; }
+        public event Action<string, string>? UpdateAvailable;
         public bool IsUpdateActionAvailable => IsUpdateAvailable || IsUpdateDownloaded;
         public bool ShowTopUpdateStatus => IsCheckingForUpdates || IsDownloadingUpdate || IsInstallingUpdate || IsUpdateAvailable || IsUpdateDownloaded;
         public bool ShowTopUpdateStatusPill => ShowTopUpdateStatus && !IsDownloadingUpdate && !IsUpdateDownloaded && !IsTopUpdateActionVisible;
@@ -245,6 +246,7 @@ namespace EchoX.ViewModels
                     UpdateStatusDetail = !string.IsNullOrWhiteSpace(_downloadUrl)
                         ? $"Update ready: v{latestVersion}"
                         : $"Update ready: v{latestVersion}. Open release page.";
+                    UpdateAvailable?.Invoke("EchoX update available", UpdateStatusDetail);
                     return;
                 }
 

@@ -105,6 +105,7 @@ namespace EchoX.Services
 
     public class AppSettings
     {
+        public EchoX.ViewModels.UpdatePreference UpdatePreference { get; set; } = EchoX.ViewModels.UpdatePreference.NotifyOnly;
         public EchoX.ViewModels.NotificationType NotificationType { get; set; } = EchoX.ViewModels.NotificationType.PopupScreen;
         public bool ShowMuteIndicator { get; set; } = true;
         public bool MutePopupSound { get; set; } = false;

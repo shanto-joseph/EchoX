@@ -32,6 +32,7 @@ namespace EchoX.ViewModels
             if (_storageService != null)
             {
                 var settings = _storageService.LoadAppSettings();
+                _updatePreference = settings.UpdatePreference;
                 _notificationType = settings.NotificationType;
                 _showMuteIndicator = settings.ShowMuteIndicator;
                 _mutePopupSound = settings.MutePopupSound;
@@ -62,7 +63,16 @@ namespace EchoX.ViewModels
         public UpdatePreference UpdatePreference
         {
             get => _updatePreference;
-            set => SetProperty(ref _updatePreference, value);
+            set
+            {
+                if (!SetProperty(ref _updatePreference, value))
+                    return;
+
+                OnPropertyChanged(nameof(UpdateAutoInstall));
+                OnPropertyChanged(nameof(UpdateNotifyOnly));
+                OnPropertyChanged(nameof(UpdateNoUpdates));
+                SaveSettings();
+            }
         }
 
         public bool UpdateAutoInstall
@@ -72,8 +82,6 @@ namespace EchoX.ViewModels
             {
                 if (!value) return;
                 UpdatePreference = UpdatePreference.AutoInstall;
-                OnPropertyChanged(nameof(UpdateNotifyOnly));
-                OnPropertyChanged(nameof(UpdateNoUpdates));
             }
         }
 
@@ -82,10 +90,7 @@ namespace EchoX.ViewModels
             get => _updatePreference == UpdatePreference.NotifyOnly;
             set
             {
-                if (!value) return;
-                UpdatePreference = UpdatePreference.NotifyOnly;
-                OnPropertyChanged(nameof(UpdateAutoInstall));
-                OnPropertyChanged(nameof(UpdateNoUpdates));
+                UpdatePreference = value ? UpdatePreference.NotifyOnly : UpdatePreference.NoUpdates;
             }
         }
 
@@ -96,8 +101,6 @@ namespace EchoX.ViewModels
             {
                 if (!value) return;
                 UpdatePreference = UpdatePreference.NoUpdates;
-                OnPropertyChanged(nameof(UpdateAutoInstall));
-                OnPropertyChanged(nameof(UpdateNotifyOnly));
             }
         }
 
@@ -211,6 +214,7 @@ namespace EchoX.ViewModels
                 return;
 
             var settings = _storageService.LoadAppSettings();
+            settings.UpdatePreference = _updatePreference;
             settings.NotificationType = _notificationType;
             settings.ShowMuteIndicator = _showMuteIndicator;
             settings.MutePopupSound = _mutePopupSound;
