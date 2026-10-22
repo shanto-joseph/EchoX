@@ -17,15 +17,11 @@ namespace EchoX
         private const int WS_EX_LAYERED     = 0x00080000;
         [DllImport("user32.dll")] static extern int GetWindowLong(IntPtr hwnd, int index);
         [DllImport("user32.dll")] static extern int SetWindowLong(IntPtr hwnd, int index, int newStyle);
-        [DllImport("winmm.dll")] static extern bool PlaySound(string? sound, IntPtr hmod, uint fdwSound);
-        private const uint SND_PURGE = 0x0040;
 
         public NotificationPopup(string title, string message, AppSettings? settings = null)
         {
             InitializeComponent();
 
-            // Kill any pending system sound immediately
-            PlaySound(null, IntPtr.Zero, SND_PURGE);
             TitleText.Text   = title;
 
             // For profile switch: "Activated: ProfileName" — highlight the name in green

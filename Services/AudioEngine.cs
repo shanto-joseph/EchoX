@@ -17,7 +17,8 @@ namespace EchoX.Services
     {
         private readonly Lazy<CoreAudioController> _controller =
             new Lazy<CoreAudioController>(() => new CoreAudioController());
-        private SoundPlayer? _testTonePlayer;
+        private SoundPlayer? _notificationPlayer;
+        private readonly object _soundLock = new object();
         private DateTime _lastPlayTime = DateTime.MinValue;
 
         private IWaveIn? _micCapture;
@@ -27,13 +28,17 @@ namespace EchoX.Services
 
         public AudioEngine()
         {
-            // Pre-load your custom audio.wav from the Assets folder so it's instant-fire
-            string wavPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "audio.wav");
-            if (System.IO.File.Exists(wavPath))
+            // Pre-load custom audio.wav from the Assets folder into memory so it's instant-fire
+            try
             {
-                _testTonePlayer = new SoundPlayer(wavPath);
-                try { _testTonePlayer.LoadAsync(); } catch { }
+                string wavPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "audio.wav");
+                if (System.IO.File.Exists(wavPath))
+                {
+                    _notificationPlayer = new SoundPlayer(wavPath);
+                    _notificationPlayer.Load();
+                }
             }
+            catch { }
         }
 
         // 1. Fetch all active Output Devices (Speakers/Headphones)
@@ -540,37 +545,33 @@ namespace EchoX.Services
 
             try
             {
-                if (_testTonePlayer != null)
-                    _testTonePlayer.Play();
-                else
-                    SystemSounds.Asterisk.Play();
+                lock (_soundLock)
+                {
+                    if (_notificationPlayer != null)
+                        _notificationPlayer.Play();
+                    else
+                        SystemSounds.Asterisk.Play();
+                }
             }
             catch { }
         }
 
         public void PlayNotificationSound()
         {
-            System.Threading.Tasks.Task.Run(() =>
+            try
             {
-                try
+                lock (_soundLock)
                 {
-                    string wavPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "audio.wav");
-                    if (System.IO.File.Exists(wavPath))
-                    {
-                        using var reader = new AudioFileReader(wavPath);
-                        using var output = new WaveOutEvent { DesiredLatency = 100 };
-                        output.Init(reader);
-                        output.Play();
-                        while (output.PlaybackState == PlaybackState.Playing)
-                            System.Threading.Thread.Sleep(10);
-                    }
+                    if (_notificationPlayer != null)
+                        _notificationPlayer.Play();
                     else
-                    {
                         SystemSounds.Asterisk.Play();
-                    }
                 }
-                catch { SystemSounds.Asterisk.Play(); }
-            });
+            }
+            catch
+            {
+                try { SystemSounds.Asterisk.Play(); } catch { }
+            }
         }
     }
 }

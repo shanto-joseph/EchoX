@@ -857,6 +857,9 @@ namespace EchoX.ViewModels
                 return;
 
             bool isNowMuted = _audioEngine.ToggleMuteDefaultMic();
+
+            if (_mainWindowViewModel.DevicesViewModel.CurrentInputDevice != null)
+                _mainWindowViewModel.DevicesViewModel.CurrentInputDevice.IsMuted = isNowMuted;
             
             // Invoke the event for MainWindow tray icon/GUI
             _mainWindowViewModel.OnMicrophoneMuteChanged(isNowMuted);
