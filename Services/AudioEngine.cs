@@ -15,8 +15,36 @@ namespace EchoX.Services
 {
     public class AudioEngine
     {
-        private readonly Lazy<CoreAudioController> _controller =
-            new Lazy<CoreAudioController>(() => new CoreAudioController());
+        private CoreAudioController? _controller;
+        private readonly object _controllerLock = new object();
+
+        public CoreAudioController Controller
+        {
+            get
+            {
+                lock (_controllerLock)
+                {
+                    if (_controller == null)
+                    {
+                        _controller = new CoreAudioController();
+                    }
+                    return _controller;
+                }
+            }
+        }
+
+        public void RefreshController()
+        {
+            lock (_controllerLock)
+            {
+                try
+                {
+                    _controller?.Dispose();
+                }
+                catch { }
+                _controller = new CoreAudioController();
+            }
+        }
         private SoundPlayer? _notificationPlayer;
         private readonly object _soundLock = new object();
         private DateTime _lastPlayTime = DateTime.MinValue;
@@ -42,24 +70,24 @@ namespace EchoX.Services
         }
 
         // 1. Fetch all active Output Devices (Speakers/Headphones)
-        public List<CoreAudioDevice> GetSpeakers() => _controller.Value.GetPlaybackDevices(AudioSwitcher.AudioApi.DeviceState.Active).ToList();
+        public List<CoreAudioDevice> GetSpeakers() => Controller.GetPlaybackDevices(AudioSwitcher.AudioApi.DeviceState.Active).ToList();
 
         // 2. Fetch all active Input Devices (Microphones)
-        public List<CoreAudioDevice> GetMicrophones() => _controller.Value.GetCaptureDevices(AudioSwitcher.AudioApi.DeviceState.Active).ToList();
+        public List<CoreAudioDevice> GetMicrophones() => Controller.GetCaptureDevices(AudioSwitcher.AudioApi.DeviceState.Active).ToList();
 
-        public CoreAudioDevice? GetDefaultSpeaker() => _controller.Value.DefaultPlaybackDevice;
-        public CoreAudioDevice? GetDefaultMicrophone() => _controller.Value.DefaultCaptureDevice;
-        public CoreAudioDevice? GetDefaultCommunicationsSpeaker() => _controller.Value.DefaultPlaybackCommunicationsDevice;
-        public CoreAudioDevice? GetDefaultCommunicationsMicrophone() => _controller.Value.DefaultCaptureCommunicationsDevice;
+        public CoreAudioDevice? GetDefaultSpeaker() => Controller.DefaultPlaybackDevice;
+        public CoreAudioDevice? GetDefaultMicrophone() => Controller.DefaultCaptureDevice;
+        public CoreAudioDevice? GetDefaultCommunicationsSpeaker() => Controller.DefaultPlaybackCommunicationsDevice;
+        public CoreAudioDevice? GetDefaultCommunicationsMicrophone() => Controller.DefaultCaptureCommunicationsDevice;
 
-        public CoreAudioDevice? GetDeviceByGuid(Guid guid) => _controller.Value.GetDevice(guid);
+        public CoreAudioDevice? GetDeviceByGuid(Guid guid) => Controller.GetDevice(guid);
 
         public List<AppAudioSessionInfo> GetOutputSessions(string deviceId)
         {
             if (!Guid.TryParse(deviceId, out var guid))
                 return new List<AppAudioSessionInfo>();
 
-            var device = _controller.Value.GetDevice(guid);
+            var device = Controller.GetDevice(guid);
             if (device == null)
                 return new List<AppAudioSessionInfo>();
 
@@ -121,7 +149,7 @@ namespace EchoX.Services
         public void SwitchDevice(string deviceId)
         {
             if (!Guid.TryParse(deviceId, out var guid)) return;
-            var device = _controller.Value.GetDevice(guid);
+            var device = Controller.GetDevice(guid);
             if (device != null)
             {
                 device.SetAsDefault();
@@ -132,27 +160,27 @@ namespace EchoX.Services
         public void SetAsCallDevice(string deviceId)
         {
             if (!Guid.TryParse(deviceId, out var guid)) return;
-            var device = _controller.Value.GetDevice(guid);
+            var device = Controller.GetDevice(guid);
             device?.SetAsDefaultCommunications();
         }
 
         public double GetVolume(string deviceId)
         {
             if (!Guid.TryParse(deviceId, out var guid)) return 0;
-            return _controller.Value.GetDevice(guid)?.Volume ?? 0;
+            return Controller.GetDevice(guid)?.Volume ?? 0;
         }
 
         public void SetVolume(string deviceId, double volume)
         {
             if (!Guid.TryParse(deviceId, out var guid)) return;
-            var device = _controller.Value.GetDevice(guid);
+            var device = Controller.GetDevice(guid);
             if (device != null) device.Volume = volume;
         }
 
         public IDisposable WatchVolume(string deviceId, Action<double> onChanged)
         {
             if (!Guid.TryParse(deviceId, out var guid)) return new NoopDisposable();
-            var device = _controller.Value.GetDevice(guid);
+            var device = Controller.GetDevice(guid);
             if (device == null) return new NoopDisposable();
             return device.VolumeChanged.Subscribe(new VolumeObserver(onChanged));
         }
@@ -170,7 +198,7 @@ namespace EchoX.Services
         public IDisposable WatchPeak(string deviceId, Action<double> onChanged)
         {
             if (!Guid.TryParse(deviceId, out var guid)) return new NoopDisposable();
-            var device = _controller.Value.GetDevice(guid);
+            var device = Controller.GetDevice(guid);
             if (device == null) return new NoopDisposable();
             return device.PeakValueChanged.Subscribe(new PeakObserver(onChanged));
         }
@@ -187,7 +215,7 @@ namespace EchoX.Services
 
         public IDisposable WatchDevices(Action onChanged)
         {
-            return _controller.Value.AudioDeviceChanged.Subscribe(new DeviceObserver(onChanged));
+            return Controller.AudioDeviceChanged.Subscribe(new DeviceObserver(onChanged));
         }
 
         private class DeviceObserver : IObserver<AudioSwitcher.AudioApi.DeviceChangedArgs>
@@ -207,7 +235,7 @@ namespace EchoX.Services
             if (!Guid.TryParse(deviceId, out var guid))
                 return null;
 
-            var device = _controller.Value.GetDevice(guid);
+            var device = Controller.GetDevice(guid);
             if (device == null)
                 return null;
 
@@ -327,20 +355,104 @@ namespace EchoX.Services
 
         public bool ToggleMuteDefaultMic()
         {
-            var mic = _controller.Value.DefaultCaptureDevice;
-            if (mic != null)
-            {
-                mic.Mute(!mic.IsMuted);
-                return mic.IsMuted;
-            }
-            return false;
+            return ToggleMuteMicrophones();
         }
 
-        public bool IsDefaultMicMuted => _controller.Value.DefaultCaptureDevice?.IsMuted ?? false;
+        public bool ToggleMuteMicrophones(string? preferredInputId = null, string? preferredCallInputId = null)
+        {
+            try
+            {
+                var targetMics = new List<CoreAudioDevice>();
+
+                var defaultMic = Controller.DefaultCaptureDevice;
+                if (defaultMic != null)
+                    targetMics.Add(defaultMic);
+
+                var commMic = Controller.DefaultCaptureCommunicationsDevice;
+                if (commMic != null && !targetMics.Any(m => m.Id == commMic.Id))
+                    targetMics.Add(commMic);
+
+                if (!string.IsNullOrWhiteSpace(preferredInputId) && Guid.TryParse(preferredInputId, out var prefGuid))
+                {
+                    var prefMic = Controller.GetDevice(prefGuid);
+                    if (prefMic != null && !targetMics.Any(m => m.Id == prefMic.Id))
+                        targetMics.Add(prefMic);
+                }
+
+                if (!string.IsNullOrWhiteSpace(preferredCallInputId) && Guid.TryParse(preferredCallInputId, out var callGuid))
+                {
+                    var callMic = Controller.GetDevice(callGuid);
+                    if (callMic != null && !targetMics.Any(m => m.Id == callMic.Id))
+                        targetMics.Add(callMic);
+                }
+
+                if (targetMics.Count == 0)
+                    return false;
+
+                // If ANY microphone is currently unmuted, the user's intent is to MUTE (true).
+                // If ALL microphones are already muted, the intent is to UNMUTE (false).
+                bool targetMute = targetMics.Any(m =>
+                {
+                    try { return !m.IsMuted; }
+                    catch { return false; }
+                });
+
+                foreach (var mic in targetMics)
+                {
+                    try
+                    {
+                        mic.Mute(targetMute);
+                    }
+                    catch
+                    {
+                        // Stale COM handle after sleep/reconnect - refresh and retry
+                        RefreshController();
+                        try
+                        {
+                            var freshMic = Controller.GetDevice(mic.Id);
+                            freshMic?.Mute(targetMute);
+                        }
+                        catch { }
+                    }
+                }
+
+                return targetMute;
+            }
+            catch
+            {
+                RefreshController();
+                return false;
+            }
+        }
+
+        public bool IsDefaultMicMuted
+        {
+            get
+            {
+                try
+                {
+                    var defaultMic = Controller.DefaultCaptureDevice;
+                    var commMic = Controller.DefaultCaptureCommunicationsDevice;
+
+                    // If either default or communication microphone is live, microphone is not muted
+                    if (defaultMic != null && !defaultMic.IsMuted)
+                        return false;
+                    if (commMic != null && !commMic.IsMuted)
+                        return false;
+
+                    return defaultMic?.IsMuted ?? commMic?.IsMuted ?? false;
+                }
+                catch
+                {
+                    RefreshController();
+                    return false;
+                }
+            }
+        }
 
         public IDisposable WatchMute(Action<bool> onMuteChanged)
         {
-            return _controller.Value.DefaultCaptureDevice?
+            return Controller.DefaultCaptureDevice?
                 .MuteChanged.Subscribe(new MuteObserver(onMuteChanged))
                 ?? new NoopDisposable();
         }
@@ -348,14 +460,14 @@ namespace EchoX.Services
         public IDisposable WatchMute(string deviceId, Action<bool> onMuteChanged)
         {
             if (!Guid.TryParse(deviceId, out var guid)) return new NoopDisposable();
-            var device = _controller.Value.GetDevice(guid);
+            var device = Controller.GetDevice(guid);
             if (device == null) return new NoopDisposable();
             return device.MuteChanged.Subscribe(new MuteObserver(onMuteChanged));
         }
 
         public IDisposable WatchDefaultDeviceChanged(Action onChanged)
         {
-            return _controller.Value.AudioDeviceChanged.Subscribe(new DefaultDeviceObserver(onChanged));
+            return Controller.AudioDeviceChanged.Subscribe(new DefaultDeviceObserver(onChanged));
         }
 
         private class MuteObserver : IObserver<AudioSwitcher.AudioApi.DeviceMuteChangedArgs>
@@ -391,7 +503,7 @@ namespace EchoX.Services
                 string deviceName = "";
                 if (!string.IsNullOrEmpty(deviceId) && Guid.TryParse(deviceId, out var guid))
                 {
-                   var dev = _controller.Value.GetDevice(guid);
+                   var dev = Controller.GetDevice(guid);
                    if (dev != null) deviceName = dev.Name;
                 }
 

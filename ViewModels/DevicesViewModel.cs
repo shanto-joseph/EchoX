@@ -653,9 +653,14 @@ namespace EchoX.ViewModels
                                 || InputDevices.Any(d => micIds.All(id => id != d.Id))
                                 || OutputDevices.Any(d => speakerIds.All(id => id != d.Id));
                 if (listChanged)
+                {
+                    _audioEngine.RefreshController();
                     System.Threading.Tasks.Task.Run(() => LoadDevices());
+                }
                 else
+                {
                     SyncMuteWatchers();
+                }
             }
             catch (Exception ex)
             {
