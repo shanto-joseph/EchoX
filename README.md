@@ -12,7 +12,7 @@
 <p align="center">
   <a href="https://github.com/shanto-joseph/EchoX">GitHub</a>
   ·
-  <a href="https://echox.notrazer.xyz/">Website</a>
+  <a href="https://echox.shantojoseph.com/">Website</a>
   ·
   <a href="https://shantojoseph.com/">Buy me a coffee</a>
 </p>
@@ -80,7 +80,7 @@ If EchoX helps your setup and you want to support future updates:
 </p>
 
 - GitHub: https://github.com/shanto-joseph/EchoX
-- Website: https://echox.notrazer.xyz/
+- Website: https://echox.shantojoseph.com/
 
 ## License
 

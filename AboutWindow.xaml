@@ -125,7 +125,7 @@
                             </TextBlock>
                             <TextBlock FontSize="11"
                                        Margin="0,4,0,0">
-                                <Hyperlink NavigateUri="https://echox.notrazer.xyz/"
+                                <Hyperlink NavigateUri="https://echox.shantojoseph.com/"
                                            RequestNavigate="CreatorLink_RequestNavigate"
                                            Foreground="#53C028"
                                            TextDecorations="{x:Null}">
